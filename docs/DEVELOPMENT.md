@@ -493,6 +493,89 @@ Response:
 }
 ```
 
+### File Upload & Processing (`/v1/vector_stores/{id}/files`)
+
+**Upload File** - `POST /v1/vector_stores/{vector_store_id}/files`
+
+Upload a file (or raw text) to a vector store. The file is chunked, embedded, and stored as searchable vectors. Large files (>50 KB) are processed in the background.
+
+**File Upload (multipart/form-data):**
+```bash
+curl -X POST http://localhost:8000/v1/vector_stores/550e8400-e29b-41d4-a716-446655440000/files \
+  -F "file=@document.txt"
+```
+
+**Raw Text Upload:**
+```bash
+curl -X POST http://localhost:8000/v1/vector_stores/550e8400-e29b-41d4-a716-446655440000/files \
+  -F "text=Your raw text content here"
+```
+
+Response (small file - processed inline):
+```json
+{
+  "id": "660e8400-e29b-41d4-a716-446655440001",
+  "object": "vector_store.file",
+  "vector_store_id": "550e8400-e29b-41d4-a716-446655440000",
+  "filename": "document.txt",
+  "status": "completed",
+  "bytes": 1024,
+  "chunk_count": 3,
+  "purpose": "assistants",
+  "created_at": 1707868900
+}
+```
+
+Response (large file - background processing):
+```json
+{
+  "id": "660e8400-e29b-41d4-a716-446655440002",
+  "object": "vector_store.file",
+  "vector_store_id": "550e8400-e29b-41d4-a716-446655440000",
+  "filename": "large_document.txt",
+  "status": "in_progress",
+  "bytes": 75000,
+  "chunk_count": 0,
+  "purpose": "assistants",
+  "created_at": 1707868900
+}
+```
+
+**Processing Behavior:**
+- Files ≤50 KB: Processed inline, returns `status: "completed"` with chunk count
+- Files >50 KB: Processed in background, returns `status: "in_progress"` (use GET endpoint to poll)
+- Errors: Returns `status: "failed"` if chunking/embedding fails
+
+**Get File Status** - `GET /v1/vector_stores/{vector_store_id}/files/{file_id}`
+
+Retrieve a file's processing status and chunk count (useful for polling background uploads).
+
+```bash
+curl http://localhost:8000/v1/vector_stores/550e8400-e29b-41d4-a716-446655440000/files/660e8400-e29b-41d4-a716-446655440002
+```
+
+Response:
+```json
+{
+  "id": "660e8400-e29b-41d4-a716-446655440002",
+  "object": "vector_store.file",
+  "vector_store_id": "550e8400-e29b-41d4-a716-446655440000",
+  "filename": "large_document.txt",
+  "status": "completed",
+  "bytes": 75000,
+  "chunk_count": 95,
+  "purpose": "assistants",
+  "created_at": 1707868900
+}
+```
+
+**Implementation Details:**
+- **Chunking**: Uses `split_text()` from chunking service with recursive separator strategy
+- **Embedding**: Uses `embed_texts()` from embedding service (OpenAI API)
+- **Bulk Insert**: Uses `session.add_all()` for efficient batch insertion of 100+ chunks
+- **Background Processing**: Uses FastAPI `BackgroundTasks` for large files
+- **Session Management**: Background tasks create their own sessions via `get_session_factory()`
+
 ---
 
 ## Project Structure Guidelines
