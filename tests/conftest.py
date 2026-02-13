@@ -6,7 +6,7 @@ import uuid
 from collections.abc import Generator
 from datetime import UTC, datetime
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -15,7 +15,6 @@ from maia_vectordb.db.engine import get_db_session
 from maia_vectordb.main import app
 from maia_vectordb.models.file import FileStatus
 from maia_vectordb.models.vector_store import VectorStoreStatus
-
 
 # ---------------------------------------------------------------------------
 # Mock factory helpers

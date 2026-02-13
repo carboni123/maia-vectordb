@@ -3,37 +3,19 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Generator
-from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 
-from maia_vectordb.db.engine import get_db_session
-from maia_vectordb.main import app
-from maia_vectordb.models.vector_store import VectorStoreStatus
+from tests.conftest import make_store
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 _EMBEDDING_DIM = 1536
-
-
-def _make_store(store_id: uuid.UUID | None = None) -> MagicMock:
-    """Create a mock VectorStore ORM instance."""
-    store = MagicMock()
-    store.id = store_id or uuid.uuid4()
-    store.name = "test-store"
-    store.metadata_ = None
-    store.file_counts = None
-    store.status = VectorStoreStatus.completed
-    store.created_at = datetime(2025, 1, 1, tzinfo=UTC)
-    store.updated_at = datetime(2025, 1, 1, tzinfo=UTC)
-    store.expires_at = None
-    return store
 
 
 def _make_search_row(
@@ -57,29 +39,6 @@ def _make_search_row(
 
 
 # ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
-
-@pytest.fixture()
-def mock_session() -> AsyncMock:
-    """Return a mock async session."""
-    return AsyncMock()
-
-
-@pytest.fixture()
-def client(mock_session: AsyncMock) -> Generator[TestClient, None, None]:
-    """TestClient with the DB session overridden."""
-
-    async def _override() -> Any:  # noqa: ANN401
-        yield mock_session
-
-    app.dependency_overrides[get_db_session] = _override
-    yield TestClient(app)
-    app.dependency_overrides.clear()
-
-
-# ---------------------------------------------------------------------------
 # POST /v1/vector_stores/{id}/search
 # ---------------------------------------------------------------------------
 
@@ -88,7 +47,7 @@ class TestSearch:
     """Tests for the similarity search endpoint."""
 
     def test_search_returns_404_for_missing_store(
-        self, client: TestClient, mock_session: AsyncMock
+        self, client: TestClient, mock_session: MagicMock
     ) -> None:
         """Returns 404 when vector store does not exist."""
         mock_session.get = AsyncMock(return_value=None)
@@ -105,11 +64,11 @@ class TestSearch:
         self,
         mock_embed: MagicMock,
         client: TestClient,
-        mock_session: AsyncMock,
+        mock_session: MagicMock,
     ) -> None:
         """AC1: Search returns top-k results ranked by cosine similarity."""
         store_id = uuid.uuid4()
-        store = _make_store(store_id=store_id)
+        store = make_store(store_id=store_id)
         mock_session.get = AsyncMock(return_value=store)
 
         mock_embed.return_value = [[0.1] * _EMBEDDING_DIM]
@@ -142,11 +101,11 @@ class TestSearch:
         self,
         mock_embed: MagicMock,
         client: TestClient,
-        mock_session: AsyncMock,
+        mock_session: MagicMock,
     ) -> None:
         """AC2: Metadata filtering narrows results correctly."""
         store_id = uuid.uuid4()
-        store = _make_store(store_id=store_id)
+        store = make_store(store_id=store_id)
         mock_session.get = AsyncMock(return_value=store)
 
         mock_embed.return_value = [[0.1] * _EMBEDDING_DIM]
@@ -187,11 +146,11 @@ class TestSearch:
         self,
         mock_embed: MagicMock,
         client: TestClient,
-        mock_session: AsyncMock,
+        mock_session: MagicMock,
     ) -> None:
         """AC3: score_threshold excludes low-relevance results."""
         store_id = uuid.uuid4()
-        store = _make_store(store_id=store_id)
+        store = make_store(store_id=store_id)
         mock_session.get = AsyncMock(return_value=store)
 
         mock_embed.return_value = [[0.1] * _EMBEDDING_DIM]
@@ -223,11 +182,11 @@ class TestSearch:
         self,
         mock_embed: MagicMock,
         client: TestClient,
-        mock_session: AsyncMock,
+        mock_session: MagicMock,
     ) -> None:
         """AC4: Query embedding generated on-the-fly via embed_texts."""
         store_id = uuid.uuid4()
-        store = _make_store(store_id=store_id)
+        store = make_store(store_id=store_id)
         mock_session.get = AsyncMock(return_value=store)
 
         mock_embed.return_value = [[0.5] * _EMBEDDING_DIM]
@@ -249,11 +208,11 @@ class TestSearch:
         self,
         mock_embed: MagicMock,
         client: TestClient,
-        mock_session: AsyncMock,
+        mock_session: MagicMock,
     ) -> None:
         """AC5: Response includes text content, score, and metadata."""
         store_id = uuid.uuid4()
-        store = _make_store(store_id=store_id)
+        store = make_store(store_id=store_id)
         mock_session.get = AsyncMock(return_value=store)
 
         mock_embed.return_value = [[0.1] * _EMBEDDING_DIM]
@@ -294,11 +253,11 @@ class TestSearch:
         self,
         mock_embed: MagicMock,
         client: TestClient,
-        mock_session: AsyncMock,
+        mock_session: MagicMock,
     ) -> None:
         """Returns empty list when no chunks match."""
         store_id = uuid.uuid4()
-        store = _make_store(store_id=store_id)
+        store = make_store(store_id=store_id)
         mock_session.get = AsyncMock(return_value=store)
 
         mock_embed.return_value = [[0.1] * _EMBEDDING_DIM]
@@ -322,11 +281,11 @@ class TestSearch:
         self,
         mock_embed: MagicMock,
         client: TestClient,
-        mock_session: AsyncMock,
+        mock_session: MagicMock,
     ) -> None:
         """Default max_results is 10."""
         store_id = uuid.uuid4()
-        store = _make_store(store_id=store_id)
+        store = make_store(store_id=store_id)
         mock_session.get = AsyncMock(return_value=store)
 
         mock_embed.return_value = [[0.1] * _EMBEDDING_DIM]
@@ -350,11 +309,11 @@ class TestSearch:
         self,
         mock_embed: MagicMock,
         client: TestClient,
-        mock_session: AsyncMock,
+        mock_session: MagicMock,
     ) -> None:
         """Multiple metadata filters are combined with AND."""
         store_id = uuid.uuid4()
-        store = _make_store(store_id=store_id)
+        store = make_store(store_id=store_id)
         mock_session.get = AsyncMock(return_value=store)
 
         mock_embed.return_value = [[0.1] * _EMBEDDING_DIM]
@@ -379,7 +338,7 @@ class TestSearch:
         assert "filter_key_1" in sql_text
 
     def test_search_missing_query_returns_422(
-        self, client: TestClient, mock_session: AsyncMock
+        self, client: TestClient, mock_session: MagicMock
     ) -> None:
         """Missing query field returns validation error."""
         store_id = uuid.uuid4()
@@ -390,7 +349,7 @@ class TestSearch:
         assert resp.status_code == 422
 
     def test_search_invalid_score_threshold(
-        self, client: TestClient, mock_session: AsyncMock
+        self, client: TestClient, mock_session: MagicMock
     ) -> None:
         """score_threshold > 1.0 returns validation error."""
         store_id = uuid.uuid4()

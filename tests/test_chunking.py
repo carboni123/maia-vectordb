@@ -139,3 +139,93 @@ class TestRecursiveSplitBehavior:
         # Just check it runs without error using settings defaults
         chunks = split_text("Hello world")
         assert len(chunks) == 1
+
+
+# ---------------------------------------------------------------------------
+# Edge cases: exact boundary, single token, character-level split
+# ---------------------------------------------------------------------------
+
+
+class TestChunkingEdgeCases:
+    """Edge cases for text chunking."""
+
+    def test_exact_boundary_text(self) -> None:
+        """Text that is exactly chunk_size tokens produces one chunk."""
+        chunk_size = 50
+        # Build text that is exactly 50 tokens
+        words = []
+        for i in range(200):
+            words.append(f"w{i}")
+            candidate = " ".join(words)
+            if _count_tokens(candidate) >= chunk_size:
+                # Trim to exactly chunk_size
+                while _count_tokens(candidate) > chunk_size:
+                    words.pop()
+                    candidate = " ".join(words)
+                break
+        text = " ".join(words)
+        assert _count_tokens(text) == chunk_size
+
+        chunks = split_text(text, chunk_size=chunk_size, chunk_overlap=0)
+        assert len(chunks) == 1
+        assert chunks[0] == text
+
+    def test_one_token_over_boundary(self) -> None:
+        """Text that is chunk_size + 1 tokens produces two chunks."""
+        chunk_size = 10
+        # Build text that is slightly over chunk_size
+        words = []
+        for i in range(50):
+            words.append(f"w{i}")
+            candidate = " ".join(words)
+            if _count_tokens(candidate) > chunk_size:
+                break
+        text = " ".join(words)
+        assert _count_tokens(text) > chunk_size
+
+        chunks = split_text(text, chunk_size=chunk_size, chunk_overlap=0)
+        assert len(chunks) >= 2
+        for chunk in chunks:
+            assert _count_tokens(chunk) <= chunk_size
+
+    def test_single_token(self) -> None:
+        """A single-token input produces exactly one chunk."""
+        chunks = split_text("hello", chunk_size=10, chunk_overlap=0)
+        assert len(chunks) == 1
+        assert chunks[0] == "hello"
+
+    def test_single_character_text(self) -> None:
+        """A single character produces one chunk."""
+        chunks = split_text("x", chunk_size=5, chunk_overlap=0)
+        assert len(chunks) == 1
+        assert chunks[0] == "x"
+
+    def test_all_content_preserved(self) -> None:
+        """All non-whitespace content appears in at least one chunk (no data loss)."""
+        words = [f"unique{i}" for i in range(100)]
+        text = " ".join(words)
+        chunks = split_text(text, chunk_size=20, chunk_overlap=0)
+        all_chunk_text = " ".join(chunks)
+        for word in words:
+            assert word in all_chunk_text, f"Missing word: {word}"
+
+    def test_newline_only_text(self) -> None:
+        """Text with only newlines produces no chunks."""
+        chunks = split_text("\n\n\n\n", chunk_size=100, chunk_overlap=10)
+        assert chunks == []
+
+    def test_very_large_overlap(self) -> None:
+        """Overlap larger than chunk_size still works without error."""
+        text = "word " * 200
+        # overlap > chunk_size — should not crash
+        chunks = split_text(text, chunk_size=50, chunk_overlap=100)
+        assert len(chunks) >= 1
+        for chunk in chunks:
+            assert _count_tokens(chunk) <= 50
+
+    def test_chunk_size_one(self) -> None:
+        """chunk_size=1 produces one token per chunk."""
+        text = "hello world"
+        chunks = split_text(text, chunk_size=1, chunk_overlap=0)
+        for chunk in chunks:
+            assert _count_tokens(chunk) <= 1

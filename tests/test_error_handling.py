@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Generator
 from typing import Any
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -17,7 +16,6 @@ from maia_vectordb.core.exceptions import (
     NotFoundError,
     ValidationError,
 )
-from maia_vectordb.db.engine import get_db_session
 from maia_vectordb.main import app
 
 # ---------------------------------------------------------------------------
@@ -41,28 +39,6 @@ def _clean_route(path: str) -> None:
         r for r in app.routes
         if getattr(r, "path", None) != path
     ]
-
-
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
-
-@pytest.fixture()
-def mock_session() -> AsyncMock:
-    return AsyncMock()
-
-
-@pytest.fixture()
-def client(
-    mock_session: AsyncMock,
-) -> Generator[TestClient, None, None]:
-    async def _override() -> Any:  # noqa: ANN401
-        yield mock_session
-
-    app.dependency_overrides[get_db_session] = _override
-    yield TestClient(app)
-    app.dependency_overrides.clear()
 
 
 # ===================================================================
@@ -113,7 +89,7 @@ class TestErrorFormat:
     """All error responses use {error: {message, type, code}}."""
 
     def test_404_has_error_envelope(
-        self, client: TestClient, mock_session: AsyncMock
+        self, client: TestClient, mock_session: MagicMock
     ) -> None:
         """Existing 404 from HTTPException gets wrapped."""
         mock_session.get = AsyncMock(return_value=None)
@@ -136,7 +112,7 @@ class TestErrorFormat:
         assert body["error"]["type"] == "validation_error"
 
     def test_unhandled_exception_returns_500(
-        self, client: TestClient, mock_session: AsyncMock
+        self, client: TestClient, mock_session: MagicMock
     ) -> None:
         """An unexpected error returns 500 with safe message."""
         mock_session.get = AsyncMock(
@@ -256,7 +232,7 @@ class TestRequestLogging:
     def test_error_request_logged(
         self,
         client: TestClient,
-        mock_session: AsyncMock,
+        mock_session: MagicMock,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         mock_session.get = AsyncMock(return_value=None)
@@ -332,7 +308,7 @@ class TestNoLeakedStackTraces:
     """No internal details in error responses."""
 
     def test_unhandled_runtime_error(
-        self, client: TestClient, mock_session: AsyncMock
+        self, client: TestClient, mock_session: MagicMock
     ) -> None:
         mock_session.get = AsyncMock(
             side_effect=RuntimeError("secret DB conn string")
@@ -346,7 +322,7 @@ class TestNoLeakedStackTraces:
         assert "Traceback" not in full_text
 
     def test_unhandled_type_error(
-        self, client: TestClient, mock_session: AsyncMock
+        self, client: TestClient, mock_session: MagicMock
     ) -> None:
         mock_session.get = AsyncMock(
             side_effect=TypeError("'NoneType' no attr")

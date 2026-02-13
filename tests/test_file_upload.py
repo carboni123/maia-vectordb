@@ -3,91 +3,13 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Generator
-from datetime import UTC, datetime
 from io import BytesIO
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from fastapi.testclient import TestClient
 
-from maia_vectordb.db.engine import get_db_session
-from maia_vectordb.main import app
 from maia_vectordb.models.file import FileStatus
-from maia_vectordb.models.vector_store import VectorStoreStatus
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-_FILE_ATTRS = (
-    "id",
-    "vector_store_id",
-    "filename",
-    "status",
-    "bytes",
-    "purpose",
-    "created_at",
-)
-
-
-def _make_store(store_id: uuid.UUID | None = None) -> MagicMock:
-    """Create a mock VectorStore ORM instance."""
-    store = MagicMock()
-    store.id = store_id or uuid.uuid4()
-    store.name = "test-store"
-    store.metadata_ = None
-    store.file_counts = None
-    store.status = VectorStoreStatus.completed
-    store.created_at = datetime(2025, 1, 1, tzinfo=UTC)
-    store.updated_at = datetime(2025, 1, 1, tzinfo=UTC)
-    store.expires_at = None
-    return store
-
-
-def _make_file(
-    *,
-    vector_store_id: uuid.UUID,
-    filename: str = "test.txt",
-    status: FileStatus = FileStatus.in_progress,
-    byte_size: int = 100,
-    file_id: uuid.UUID | None = None,
-) -> MagicMock:
-    """Create a mock File ORM instance."""
-    f = MagicMock()
-    f.id = file_id or uuid.uuid4()
-    f.vector_store_id = vector_store_id
-    f.filename = filename
-    f.status = status
-    f.bytes = byte_size
-    f.purpose = "assistants"
-    f.created_at = datetime(2025, 1, 1, tzinfo=UTC)
-    return f
-
-
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
-
-@pytest.fixture()
-def mock_session() -> AsyncMock:
-    """Return a mock async session."""
-    return AsyncMock()
-
-
-@pytest.fixture()
-def client(mock_session: AsyncMock) -> Generator[TestClient, None, None]:
-    """TestClient with the DB session overridden."""
-
-    async def _override() -> Any:  # noqa: ANN401
-        yield mock_session
-
-    app.dependency_overrides[get_db_session] = _override
-    yield TestClient(app)
-    app.dependency_overrides.clear()
-
+from tests.conftest import _FILE_ATTRS, make_file, make_refresh, make_store
 
 # ---------------------------------------------------------------------------
 # POST /v1/vector_stores/{id}/files — file upload
@@ -98,7 +20,7 @@ class TestUploadFile:
     """Tests for the file upload endpoint."""
 
     def test_upload_returns_404_for_missing_store(
-        self, client: TestClient, mock_session: AsyncMock
+        self, client: TestClient, mock_session: MagicMock
     ) -> None:
         """AC3: Returns meaningful error if vector store not found."""
         mock_session.get = AsyncMock(return_value=None)
@@ -119,24 +41,21 @@ class TestUploadFile:
         mock_split: MagicMock,
         mock_embed: MagicMock,
         client: TestClient,
-        mock_session: AsyncMock,
+        mock_session: MagicMock,
     ) -> None:
         """AC1: File upload processes end-to-end."""
         store_id = uuid.uuid4()
-        store = _make_store(store_id=store_id)
-        file_mock = _make_file(
+        store = make_store(store_id=store_id)
+        file_mock = make_file(
             vector_store_id=store_id,
             filename="hello.txt",
             status=FileStatus.completed,
         )
 
         mock_session.get = AsyncMock(return_value=store)
-
-        async def _refresh(obj: Any, **_kw: Any) -> None:
-            for attr in _FILE_ATTRS:
-                setattr(obj, attr, getattr(file_mock, attr))
-
-        mock_session.refresh = AsyncMock(side_effect=_refresh)
+        mock_session.refresh = AsyncMock(
+            side_effect=make_refresh(file_mock, _FILE_ATTRS)
+        )
 
         mock_split.return_value = ["chunk one", "chunk two"]
         mock_embed.return_value = [[0.1] * 1536, [0.2] * 1536]
@@ -166,12 +85,12 @@ class TestUploadFile:
         mock_split: MagicMock,
         mock_embed: MagicMock,
         client: TestClient,
-        mock_session: AsyncMock,
+        mock_session: MagicMock,
     ) -> None:
         """Endpoint accepts raw text via form field."""
         store_id = uuid.uuid4()
-        store = _make_store(store_id=store_id)
-        file_mock = _make_file(
+        store = make_store(store_id=store_id)
+        file_mock = make_file(
             vector_store_id=store_id,
             filename="raw_text.txt",
             status=FileStatus.completed,
@@ -179,12 +98,9 @@ class TestUploadFile:
         )
 
         mock_session.get = AsyncMock(return_value=store)
-
-        async def _refresh(obj: Any, **_kw: Any) -> None:
-            for attr in _FILE_ATTRS:
-                setattr(obj, attr, getattr(file_mock, attr))
-
-        mock_session.refresh = AsyncMock(side_effect=_refresh)
+        mock_session.refresh = AsyncMock(
+            side_effect=make_refresh(file_mock, _FILE_ATTRS)
+        )
 
         mock_split.return_value = ["some text"]
         mock_embed.return_value = [[0.1] * 1536]
@@ -200,10 +116,10 @@ class TestUploadFile:
         assert body["chunk_count"] == 1
 
     def test_upload_no_file_or_text_returns_400(
-        self, client: TestClient, mock_session: AsyncMock
+        self, client: TestClient, mock_session: MagicMock
     ) -> None:
         """Returns 400 when neither file nor text is provided."""
-        store = _make_store()
+        store = make_store()
         mock_session.get = AsyncMock(return_value=store)
 
         resp = client.post(f"/v1/vector_stores/{store.id}/files")
@@ -217,24 +133,21 @@ class TestUploadFile:
         mock_split: MagicMock,
         mock_embed: MagicMock,
         client: TestClient,
-        mock_session: AsyncMock,
+        mock_session: MagicMock,
     ) -> None:
         """AC5: Response includes chunk count and processing status."""
         store_id = uuid.uuid4()
-        store = _make_store(store_id=store_id)
-        file_mock = _make_file(
+        store = make_store(store_id=store_id)
+        file_mock = make_file(
             vector_store_id=store_id,
             status=FileStatus.completed,
             byte_size=5,
         )
 
         mock_session.get = AsyncMock(return_value=store)
-
-        async def _refresh(obj: Any, **_kw: Any) -> None:
-            for attr in _FILE_ATTRS:
-                setattr(obj, attr, getattr(file_mock, attr))
-
-        mock_session.refresh = AsyncMock(side_effect=_refresh)
+        mock_session.refresh = AsyncMock(
+            side_effect=make_refresh(file_mock, _FILE_ATTRS)
+        )
 
         mock_split.return_value = ["a"]
         mock_embed.return_value = [[0.1] * 1536]
@@ -269,23 +182,20 @@ class TestUploadFile:
         mock_split: MagicMock,
         mock_embed: MagicMock,
         client: TestClient,
-        mock_session: AsyncMock,
+        mock_session: MagicMock,
     ) -> None:
         """AC2: Bulk insert for 100+ chunks."""
         store_id = uuid.uuid4()
-        store = _make_store(store_id=store_id)
-        file_mock = _make_file(
+        store = make_store(store_id=store_id)
+        file_mock = make_file(
             vector_store_id=store_id,
             status=FileStatus.completed,
         )
 
         mock_session.get = AsyncMock(return_value=store)
-
-        async def _refresh(obj: Any, **_kw: Any) -> None:
-            for attr in _FILE_ATTRS:
-                setattr(obj, attr, getattr(file_mock, attr))
-
-        mock_session.refresh = AsyncMock(side_effect=_refresh)
+        mock_session.refresh = AsyncMock(
+            side_effect=make_refresh(file_mock, _FILE_ATTRS)
+        )
 
         num_chunks = 150
         mock_split.return_value = [f"chunk {i}" for i in range(num_chunks)]
@@ -317,12 +227,12 @@ class TestUploadLargeFileBackground:
         self,
         mock_bg: MagicMock,
         client: TestClient,
-        mock_session: AsyncMock,
+        mock_session: MagicMock,
     ) -> None:
         """AC4: Large files processed via background task."""
         store_id = uuid.uuid4()
-        store = _make_store(store_id=store_id)
-        file_mock = _make_file(
+        store = make_store(store_id=store_id)
+        file_mock = make_file(
             vector_store_id=store_id,
             filename="large.txt",
             status=FileStatus.in_progress,
@@ -330,12 +240,9 @@ class TestUploadLargeFileBackground:
         )
 
         mock_session.get = AsyncMock(return_value=store)
-
-        async def _refresh(obj: Any, **_kw: Any) -> None:
-            for attr in _FILE_ATTRS:
-                setattr(obj, attr, getattr(file_mock, attr))
-
-        mock_session.refresh = AsyncMock(side_effect=_refresh)
+        mock_session.refresh = AsyncMock(
+            side_effect=make_refresh(file_mock, _FILE_ATTRS)
+        )
 
         content = b"x" * 50
         resp = client.post(
@@ -367,23 +274,20 @@ class TestUploadProcessingFailure:
         mock_split: MagicMock,
         mock_embed: MagicMock,
         client: TestClient,
-        mock_session: AsyncMock,
+        mock_session: MagicMock,
     ) -> None:
         """File status set to failed when processing errors out."""
         store_id = uuid.uuid4()
-        store = _make_store(store_id=store_id)
-        file_mock = _make_file(
+        store = make_store(store_id=store_id)
+        file_mock = make_file(
             vector_store_id=store_id,
             status=FileStatus.failed,
         )
 
         mock_session.get = AsyncMock(return_value=store)
-
-        async def _refresh(obj: Any, **_kw: Any) -> None:
-            for attr in _FILE_ATTRS:
-                setattr(obj, attr, getattr(file_mock, attr))
-
-        mock_session.refresh = AsyncMock(side_effect=_refresh)
+        mock_session.refresh = AsyncMock(
+            side_effect=make_refresh(file_mock, _FILE_ATTRS)
+        )
 
         mock_split.return_value = ["chunk"]
         mock_embed.side_effect = RuntimeError("OpenAI down")
@@ -410,9 +314,9 @@ class TestGetFile:
     """Tests for the file status retrieval endpoint."""
 
     def test_get_file_not_found(
-        self, client: TestClient, mock_session: AsyncMock
+        self, client: TestClient, mock_session: MagicMock
     ) -> None:
-        store = _make_store()
+        store = make_store()
         # First get → store, second get → None (file)
         mock_session.get = AsyncMock(side_effect=[store, None])
 
@@ -420,11 +324,11 @@ class TestGetFile:
         assert resp.status_code == 404
 
     def test_get_file_returns_chunk_count(
-        self, client: TestClient, mock_session: AsyncMock
+        self, client: TestClient, mock_session: MagicMock
     ) -> None:
         store_id = uuid.uuid4()
-        store = _make_store(store_id=store_id)
-        file_obj = _make_file(
+        store = make_store(store_id=store_id)
+        file_obj = make_file(
             vector_store_id=store_id,
             status=FileStatus.completed,
         )
@@ -442,12 +346,12 @@ class TestGetFile:
         assert body["status"] == "completed"
 
     def test_get_file_wrong_store_returns_404(
-        self, client: TestClient, mock_session: AsyncMock
+        self, client: TestClient, mock_session: MagicMock
     ) -> None:
         """File belongs to a different store - 404."""
-        store = _make_store()
+        store = make_store()
         other_store_id = uuid.uuid4()
-        file_obj = _make_file(vector_store_id=other_store_id)
+        file_obj = make_file(vector_store_id=other_store_id)
 
         mock_session.get = AsyncMock(side_effect=[store, file_obj])
 
