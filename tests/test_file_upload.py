@@ -110,7 +110,7 @@ class TestUploadFile:
             },
         )
         assert resp.status_code == 404
-        assert "Vector store not found" in resp.json()["detail"]
+        assert "Vector store not found" in resp.json()["error"]["message"]
 
     @patch("maia_vectordb.api.files.embed_texts")
     @patch("maia_vectordb.api.files.split_text")
@@ -208,7 +208,7 @@ class TestUploadFile:
 
         resp = client.post(f"/v1/vector_stores/{store.id}/files")
         assert resp.status_code == 400
-        assert "Provide either" in resp.json()["detail"]
+        assert "Provide either" in resp.json()["error"]["message"]
 
     @patch("maia_vectordb.api.files.embed_texts")
     @patch("maia_vectordb.api.files.split_text")
