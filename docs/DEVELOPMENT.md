@@ -230,6 +230,119 @@ uv lock --check
 uv lock --upgrade
 ```
 
+## Text Chunking & Embedding Services
+
+### Chunking Service (`services/chunking.py`)
+
+**Purpose**: Split long documents into token-limited chunks with overlap to prevent context loss.
+
+**Key Features**:
+- Recursive separator strategy: `\n\n` → `\n` → ` ` → character-level
+- Accurate token counting using `tiktoken` (same as OpenAI)
+- Configurable chunk size (default 800 tokens) and overlap (default 200 tokens)
+- Supports `.txt` and `.md` files
+
+**Usage Example**:
+```python
+from maia_vectordb.services.chunking import split_text, read_file
+
+# Split text into chunks
+text = "Your long document here..."
+chunks = split_text(
+    text,
+    chunk_size=800,      # Max tokens per chunk (default from settings)
+    chunk_overlap=200,   # Overlapping tokens (default from settings)
+)
+
+# Read and validate file
+content = read_file("document.txt")  # Supports .txt and .md only
+chunks = split_text(content)
+```
+
+**Configuration** (via `core/config.py`):
+```python
+# .env file
+CHUNK_SIZE=800           # Max tokens per chunk
+CHUNK_OVERLAP=200        # Overlapping tokens between chunks
+```
+
+**How it Works**:
+1. Tries to split on paragraph boundaries (`\n\n`) first
+2. Falls back to line boundaries (`\n`) if paragraphs too large
+3. Falls back to word boundaries (` `) if lines too large
+4. Falls back to character-level splitting as last resort
+5. Maintains overlap by taking trailing tokens from previous chunk
+
+### Embedding Service (`services/embedding.py`)
+
+**Purpose**: Generate vector embeddings for text chunks using OpenAI's embedding API.
+
+**Key Features**:
+- Batching at max 2048 inputs per request (OpenAI limit)
+- Exponential backoff retry (1s → 2s → 4s → 8s → 16s)
+- Retries on rate limits (429) and transient errors (5xx, connection errors)
+- Non-retryable errors (401, 403) raise immediately
+- Integration function `chunk_and_embed()` combines chunking + embedding
+
+**Usage Example**:
+```python
+from maia_vectordb.services.embedding import embed_texts, chunk_and_embed
+
+# Embed a list of texts
+texts = ["Hello world", "Another text"]
+embeddings = embed_texts(texts, model="text-embedding-3-small")
+# Returns: list[list[float]] - one 1536-dim vector per text
+
+# One-liner: chunk and embed in one step
+text = "Your long document here..."
+result = chunk_and_embed(
+    text,
+    chunk_size=800,
+    chunk_overlap=200,
+    model="text-embedding-3-small",
+)
+# Returns: list[tuple[str, list[float]]] - (chunk_text, embedding_vector) pairs
+```
+
+**Configuration** (via `core/config.py`):
+```python
+# .env file
+OPENAI_API_KEY=sk-your-api-key-here
+EMBEDDING_MODEL=text-embedding-3-small  # or text-embedding-ada-002
+```
+
+**Retry Logic**:
+- Retries on: 429 (rate limit), 500, 502, 503, 504 (server errors), connection errors
+- Max 5 retries with exponential backoff
+- Backoff: 1s → 2s → 4s → 8s → 16s
+- Non-retryable errors raise immediately (401, 403, etc.)
+
+**Batching**:
+- Automatically splits large inputs into batches of 2048 texts
+- Preserves input order in output
+- Example: 2058 texts → 2 API calls (2048 + 10)
+
+**Integration Test** (requires API key):
+```python
+import pytest
+
+@pytest.mark.integration
+def test_chunk_and_embed_real_api() -> None:
+    """Integration test with real OpenAI API (requires OPENAI_API_KEY)."""
+    from maia_vectordb.services.embedding import chunk_and_embed
+
+    text = "This is a test document. " * 100  # ~200 tokens
+    result = chunk_and_embed(text, chunk_size=100, chunk_overlap=20)
+
+    assert len(result) >= 2  # Should split into multiple chunks
+    for chunk_text, embedding in result:
+        assert len(embedding) == 1536  # text-embedding-3-small dimension
+        assert chunk_text  # Non-empty text
+
+# Run integration tests
+# uv run pytest tests -v -m integration
+```
+
 ## Database Schema
 
 ### Tables
@@ -298,6 +411,7 @@ src/maia_vectordb/
 │   └── vectors.py    # Vector store schemas
 ├── services/         # Business logic
 │   ├── __init__.py
+│   ├── chunking.py   # Recursive text splitter
 │   ├── embedding.py  # OpenAI embedding generation
 │   └── search.py     # Vector similarity search
 ├── core/             # Configuration
