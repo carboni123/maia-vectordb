@@ -11,6 +11,7 @@ class SearchRequest(BaseModel):
     query: str
     max_results: int = Field(default=10, ge=1, le=100)
     filter: dict[str, Any] | None = None
+    score_threshold: float | None = Field(default=None, ge=0.0, le=1.0)
 
 
 class SearchResult(BaseModel):
