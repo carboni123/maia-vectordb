@@ -1,8 +1,9 @@
 """Tests for SQLAlchemy database models."""
 
 import uuid
+from typing import Any
 
-from sqlalchemy import inspect
+from sqlalchemy import Table, inspect
 
 from maia_vectordb.db.base import Base
 from maia_vectordb.models import (
@@ -17,6 +18,11 @@ from maia_vectordb.models import (
 # ---------------------------------------------------------------------------
 # AC: all 3 models defined with proper columns/types
 # ---------------------------------------------------------------------------
+
+
+def _get_table(model: type[Base]) -> Table:
+    """Return the underlying Table for a model (typed helper)."""
+    return model.__table__  # type: ignore[return-value]
 
 
 class TestVectorStoreModel:
@@ -44,7 +50,7 @@ class TestVectorStoreModel:
         assert expected.issubset(col_names)
 
     def test_uuid_primary_key(self) -> None:
-        table = VectorStore.__table__
+        table = _get_table(VectorStore)
         pk_cols = [c.name for c in table.primary_key.columns]
         assert pk_cols == ["id"]
         assert table.c.id.type.__class__.__name__ == "Uuid"
@@ -84,17 +90,17 @@ class TestFileModel:
         assert expected.issubset(col_names)
 
     def test_uuid_primary_key(self) -> None:
-        table = File.__table__
+        table = _get_table(File)
         pk_cols = [c.name for c in table.primary_key.columns]
         assert pk_cols == ["id"]
 
     def test_foreign_key_to_vector_store(self) -> None:
-        table = File.__table__
+        table = _get_table(File)
         fk_targets = {str(fk.target_fullname) for fk in table.foreign_keys}
         assert "vector_stores.id" in fk_targets
 
     def test_cascade_delete_on_fk(self) -> None:
-        table = File.__table__
+        table = _get_table(File)
         for fk in table.foreign_keys:
             if str(fk.target_fullname) == "vector_stores.id":
                 assert fk.ondelete == "CASCADE"
@@ -134,42 +140,43 @@ class TestFileChunkModel:
         assert expected.issubset(col_names)
 
     def test_uuid_primary_key(self) -> None:
-        table = FileChunk.__table__
+        table = _get_table(FileChunk)
         pk_cols = [c.name for c in table.primary_key.columns]
         assert pk_cols == ["id"]
 
     def test_foreign_key_to_file(self) -> None:
-        table = FileChunk.__table__
+        table = _get_table(FileChunk)
         fk_targets = {str(fk.target_fullname) for fk in table.foreign_keys}
         assert "files.id" in fk_targets
 
     def test_foreign_key_to_vector_store(self) -> None:
-        table = FileChunk.__table__
+        table = _get_table(FileChunk)
         fk_targets = {str(fk.target_fullname) for fk in table.foreign_keys}
         assert "vector_stores.id" in fk_targets
 
     def test_cascade_delete_on_fks(self) -> None:
-        table = FileChunk.__table__
+        table = _get_table(FileChunk)
         for fk in table.foreign_keys:
             assert fk.ondelete == "CASCADE"
 
     def test_vector_column_dimension(self) -> None:
         col = FileChunk.__table__.c.embedding
-        assert col.type.dim == EMBEDDING_DIMENSION  # type: ignore[union-attr]
+        col_type: Any = col.type
+        assert col_type.dim == EMBEDDING_DIMENSION
         assert EMBEDDING_DIMENSION == 1536
 
     def test_hnsw_index_exists(self) -> None:
-        table = FileChunk.__table__
+        table = _get_table(FileChunk)
         index_names = {idx.name for idx in table.indexes}
         assert "ix_file_chunks_embedding_hnsw" in index_names
 
     def test_hnsw_index_uses_cosine_ops(self) -> None:
-        table = FileChunk.__table__
+        table = _get_table(FileChunk)
         for idx in table.indexes:
             if idx.name == "ix_file_chunks_embedding_hnsw":
-                dialect_options = idx.dialect_options.get("postgresql", {})
-                assert dialect_options.get("using") == "hnsw"
-                ops = dialect_options.get("ops", {})
+                pg: Any = idx.dialect_options.get("postgresql", {})
+                assert pg.get("using") == "hnsw"
+                ops: Any = pg.get("ops", {})
                 assert ops.get("embedding") == "vector_cosine_ops"
                 break
         else:
@@ -195,6 +202,6 @@ class TestModelsImportable:
         for model in (VectorStore, File, FileChunk):
             col = model.__table__.c.id
             assert col.default is not None
-            # Call the factory to verify it produces a UUID
-            result = col.default.arg(None)  # type: ignore[union-attr]
+            default: Any = col.default
+            result = default.arg(None)
             assert isinstance(result, uuid.UUID)

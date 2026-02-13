@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+import maia_vectordb.models  # noqa: F401  — register all ORM models with Base.metadata
 from maia_vectordb.db.engine import dispose_engine, init_engine
 
 

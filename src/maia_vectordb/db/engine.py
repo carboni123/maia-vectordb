@@ -11,25 +11,34 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from maia_vectordb.core.config import settings
+from maia_vectordb.db.base import Base
 
 _engine: AsyncEngine | None = None
 _session_factory: async_sessionmaker[AsyncSession] | None = None
 
 
 def _create_engine() -> AsyncEngine:
-    """Create an async SQLAlchemy engine from settings."""
-    return create_async_engine(settings.database_url, echo=False)
+    """Create an async SQLAlchemy engine with connection pooling."""
+    return create_async_engine(
+        settings.database_url,
+        echo=False,
+        pool_size=5,
+        max_overflow=10,
+        pool_pre_ping=True,
+        pool_recycle=300,
+    )
 
 
 async def init_engine() -> None:
-    """Initialise the async engine, register pgvector, and create session factory."""
+    """Initialise async engine, register pgvector, and create session factory."""
     global _engine, _session_factory  # noqa: PLW0603
 
     _engine = _create_engine()
 
-    # Register pgvector extension
+    # Register pgvector extension and create tables via startup DDL
     async with _engine.begin() as conn:
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        await conn.run_sync(Base.metadata.create_all)
 
     _session_factory = async_sessionmaker(_engine, expire_on_commit=False)
 
