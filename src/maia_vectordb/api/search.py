@@ -71,18 +71,14 @@ async def search(
         for i, (key, value) in enumerate(body.filter.items()):
             param_key = f"filter_key_{i}"
             param_val = f"filter_val_{i}"
-            where_clauses.append(
-                f"fc.metadata->>:{param_key} = :{param_val}"
-            )
+            where_clauses.append(f"fc.metadata->>:{param_key} = :{param_val}")
             params[param_key] = key
             params[param_val] = str(value)
 
     # Score threshold filter (applied as distance threshold)
     if body.score_threshold is not None:
         # score = 1 - distance, so distance < 1 - threshold
-        where_clauses.append(
-            "(fc.embedding <=> :query_embedding) <= :max_distance"
-        )
+        where_clauses.append("(fc.embedding <=> :query_embedding) <= :max_distance")
         params["max_distance"] = 1.0 - body.score_threshold
 
     where_sql = " AND ".join(where_clauses)

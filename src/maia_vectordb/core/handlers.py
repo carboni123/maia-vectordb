@@ -14,9 +14,7 @@ from maia_vectordb.core.exceptions import APIError
 logger = logging.getLogger(__name__)
 
 
-def _error_response(
-    *, status_code: int, message: str, error_type: str
-) -> JSONResponse:
+def _error_response(*, status_code: int, message: str, error_type: str) -> JSONResponse:
     """Build the standard ``{error: {message, type, code}}`` envelope."""
     return JSONResponse(
         status_code=status_code,
@@ -30,9 +28,7 @@ def _error_response(
     )
 
 
-async def api_error_handler(
-    _request: Request, exc: APIError
-) -> JSONResponse:
+async def api_error_handler(_request: Request, exc: APIError) -> JSONResponse:
     """Handle custom APIError subclasses."""
     logger.warning("APIError [%s]: %s", exc.error_type, exc.message)
     return _error_response(
@@ -46,9 +42,7 @@ async def http_exception_handler(
     _request: Request, exc: StarletteHTTPException
 ) -> JSONResponse:
     """Handle FastAPI / Starlette HTTPException consistently."""
-    detail = (
-        exc.detail if isinstance(exc.detail, str) else str(exc.detail)
-    )
+    detail = exc.detail if isinstance(exc.detail, str) else str(exc.detail)
     return _error_response(
         status_code=exc.status_code,
         message=detail,

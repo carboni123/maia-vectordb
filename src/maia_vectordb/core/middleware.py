@@ -31,9 +31,7 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
-        request_id = request.headers.get(
-            _REQUEST_ID_HEADER
-        ) or str(uuid.uuid4())
+        request_id = request.headers.get(_REQUEST_ID_HEADER) or str(uuid.uuid4())
         request.state.request_id = request_id
 
         try:
@@ -80,9 +78,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             )
 
         duration_ms = (time.perf_counter() - start) * 1000
-        request_id: str = getattr(
-            request.state, "request_id", "-"
-        )
+        request_id: str = getattr(request.state, "request_id", "-")
         logger.info(
             "%s %s %d %.1fms [request_id=%s]",
             request.method,
