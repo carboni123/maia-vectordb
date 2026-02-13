@@ -11,7 +11,24 @@ from pydantic import BaseModel, ConfigDict, Field
 class FileUploadResponse(BaseModel):
     """Response body representing a file in a vector store (OpenAI format)."""
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": "660e8400-e29b-41d4-a716-446655440001",
+                    "object": "vector_store.file",
+                    "vector_store_id": "550e8400-e29b-41d4-a716-446655440000",
+                    "filename": "document.txt",
+                    "status": "completed",
+                    "bytes": 2048,
+                    "chunk_count": 5,
+                    "purpose": "assistants",
+                    "created_at": 1700000000,
+                }
+            ]
+        },
+    )
 
     id: str
     object: str = Field(default="vector_store.file")
@@ -56,3 +73,29 @@ class FileListResponse(BaseModel):
     first_id: str | None = None
     last_id: str | None = None
     has_more: bool = False
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "object": "list",
+                    "data": [
+                        {
+                            "id": "660e8400-e29b-41d4-a716-446655440001",
+                            "object": "vector_store.file",
+                            "vector_store_id": "550e8400-e29b-41d4-a716-446655440000",
+                            "filename": "document.txt",
+                            "status": "completed",
+                            "bytes": 2048,
+                            "chunk_count": 5,
+                            "purpose": "assistants",
+                            "created_at": 1700000000,
+                        }
+                    ],
+                    "first_id": "660e8400-e29b-41d4-a716-446655440001",
+                    "last_id": "660e8400-e29b-41d4-a716-446655440001",
+                    "has_more": False,
+                }
+            ]
+        }
+    }

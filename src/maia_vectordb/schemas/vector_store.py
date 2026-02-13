@@ -17,6 +17,20 @@ class FileCounts(BaseModel):
     failed: int = 0
     total: int = 0
 
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "in_progress": 0,
+                    "completed": 3,
+                    "cancelled": 0,
+                    "failed": 0,
+                    "total": 3,
+                }
+            ]
+        }
+    }
+
 
 class CreateVectorStoreRequest(BaseModel):
     """Request body for creating a vector store."""
@@ -25,11 +39,46 @@ class CreateVectorStoreRequest(BaseModel):
     metadata: dict[str, Any] | None = None
     expires_after: dict[str, Any] | None = None
 
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "name": "my-knowledge-base",
+                    "metadata": {"project": "chatbot"},
+                    "expires_after": None,
+                }
+            ]
+        }
+    }
+
 
 class VectorStoreResponse(BaseModel):
     """Response body representing a vector store (OpenAI format)."""
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": "550e8400-e29b-41d4-a716-446655440000",
+                    "object": "vector_store",
+                    "name": "my-knowledge-base",
+                    "status": "completed",
+                    "file_counts": {
+                        "in_progress": 0,
+                        "completed": 3,
+                        "cancelled": 0,
+                        "failed": 0,
+                        "total": 3,
+                    },
+                    "metadata": {"project": "chatbot"},
+                    "created_at": 1700000000,
+                    "updated_at": 1700000060,
+                    "expires_at": None,
+                }
+            ]
+        },
+    )
 
     id: str
     object: str = Field(default="vector_store")
@@ -84,6 +133,38 @@ class VectorStoreListResponse(BaseModel):
     last_id: str | None = None
     has_more: bool = False
 
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "object": "list",
+                    "data": [
+                        {
+                            "id": "550e8400-e29b-41d4-a716-446655440000",
+                            "object": "vector_store",
+                            "name": "my-knowledge-base",
+                            "status": "completed",
+                            "file_counts": {
+                                "in_progress": 0,
+                                "completed": 3,
+                                "cancelled": 0,
+                                "failed": 0,
+                                "total": 3,
+                            },
+                            "metadata": None,
+                            "created_at": 1700000000,
+                            "updated_at": 1700000060,
+                            "expires_at": None,
+                        }
+                    ],
+                    "first_id": "550e8400-e29b-41d4-a716-446655440000",
+                    "last_id": "550e8400-e29b-41d4-a716-446655440000",
+                    "has_more": False,
+                }
+            ]
+        }
+    }
+
 
 class DeleteVectorStoreResponse(BaseModel):
     """Response body for deleting a vector store."""
@@ -91,3 +172,15 @@ class DeleteVectorStoreResponse(BaseModel):
     id: str
     object: str = Field(default="vector_store.deleted")
     deleted: bool = True
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "id": "550e8400-e29b-41d4-a716-446655440000",
+                    "object": "vector_store.deleted",
+                    "deleted": True,
+                }
+            ]
+        }
+    }

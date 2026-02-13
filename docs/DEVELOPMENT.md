@@ -394,6 +394,50 @@ Tables and pgvector extension are created automatically on application startup v
 
 ## API Endpoints
 
+### Health Check (`/health`)
+
+**Health Check** - `GET /health`
+
+Check the health status of the service, including database connectivity and configuration.
+
+```bash
+curl http://localhost:8000/health
+```
+
+Response (healthy):
+```json
+{
+  "status": "ok",
+  "version": "0.1.0",
+  "database": {
+    "status": "ok",
+    "detail": null
+  },
+  "openai_api_key_set": true
+}
+```
+
+Response (degraded - database unreachable):
+```json
+{
+  "status": "degraded",
+  "version": "0.1.0",
+  "database": {
+    "status": "error",
+    "detail": "Connection refused"
+  },
+  "openai_api_key_set": false
+}
+```
+
+**Status Codes:**
+- `200 OK` - Service is healthy and all components are operational
+- `503 Service Unavailable` - Service is degraded (database unreachable)
+
+**Health Checks:**
+- **Database**: Runs `SELECT 1` query to verify database connectivity
+- **OpenAI API Key**: Checks if the API key is configured (presence check only, not validity)
+
 ### Vector Store CRUD (`/v1/vector_stores`)
 
 **Create Vector Store** - `POST /v1/vector_stores`
