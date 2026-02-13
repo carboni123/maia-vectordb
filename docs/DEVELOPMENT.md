@@ -392,6 +392,109 @@ Tables and pgvector extension are created automatically on application startup v
 1. `CREATE EXTENSION IF NOT EXISTS vector`
 2. `Base.metadata.create_all()` - creates all tables
 
+## API Endpoints
+
+### Vector Store CRUD (`/v1/vector_stores`)
+
+**Create Vector Store** - `POST /v1/vector_stores`
+
+Create a new vector store with optional name and metadata.
+
+```bash
+curl -X POST http://localhost:8000/v1/vector_stores \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My Documents",
+    "metadata": {"project": "demo"}
+  }'
+```
+
+Response:
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "object": "vector_store",
+  "name": "My Documents",
+  "status": "completed",
+  "file_counts": {
+    "in_progress": 0,
+    "completed": 0,
+    "cancelled": 0,
+    "failed": 0,
+    "total": 0
+  },
+  "metadata": {"project": "demo"},
+  "created_at": 1707868800,
+  "updated_at": 1707868800,
+  "expires_at": null
+}
+```
+
+**List Vector Stores** - `GET /v1/vector_stores`
+
+List all vector stores with pagination support.
+
+Query Parameters:
+- `limit` (1-100, default: 20) - Number of results per page
+- `offset` (≥0, default: 0) - Number of results to skip
+- `order` ("asc" | "desc", default: "desc") - Sort order by created_at
+
+```bash
+curl "http://localhost:8000/v1/vector_stores?limit=10&offset=0&order=desc"
+```
+
+Response:
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "object": "vector_store",
+      "name": "My Documents",
+      "status": "completed",
+      "file_counts": {...},
+      "metadata": {"project": "demo"},
+      "created_at": 1707868800,
+      "updated_at": 1707868800,
+      "expires_at": null
+    }
+  ],
+  "first_id": "550e8400-e29b-41d4-a716-446655440000",
+  "last_id": "550e8400-e29b-41d4-a716-446655440000",
+  "has_more": false
+}
+```
+
+**Get Vector Store** - `GET /v1/vector_stores/{id}`
+
+Retrieve a single vector store by ID.
+
+```bash
+curl http://localhost:8000/v1/vector_stores/550e8400-e29b-41d4-a716-446655440000
+```
+
+Response: Same as create response (200 OK) or 404 Not Found.
+
+**Delete Vector Store** - `DELETE /v1/vector_stores/{id}`
+
+Delete a vector store and all associated files and chunks (cascade delete).
+
+```bash
+curl -X DELETE http://localhost:8000/v1/vector_stores/550e8400-e29b-41d4-a716-446655440000
+```
+
+Response:
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "object": "vector_store.deleted",
+  "deleted": true
+}
+```
+
+---
+
 ## Project Structure Guidelines
 
 ### Module Organization
@@ -400,7 +503,7 @@ Tables and pgvector extension are created automatically on application startup v
 src/maia_vectordb/
 ├── api/              # FastAPI routes
 │   ├── __init__.py
-│   └── routes.py     # API endpoints
+│   └── vector_stores.py  # Vector store CRUD endpoints
 ├── models/           # SQLAlchemy ORM models
 │   ├── __init__.py
 │   ├── vector_store.py  # VectorStore model
@@ -408,12 +511,11 @@ src/maia_vectordb/
 │   └── file_chunk.py    # FileChunk model with pgvector
 ├── schemas/          # Pydantic request/response schemas
 │   ├── __init__.py
-│   └── vectors.py    # Vector store schemas
+│   └── vector_store.py  # Vector store schemas
 ├── services/         # Business logic
 │   ├── __init__.py
 │   ├── chunking.py   # Recursive text splitter
-│   ├── embedding.py  # OpenAI embedding generation
-│   └── search.py     # Vector similarity search
+│   └── embedding.py  # OpenAI embedding generation
 ├── core/             # Configuration
 │   ├── __init__.py
 │   └── config.py     # Settings (env vars)
