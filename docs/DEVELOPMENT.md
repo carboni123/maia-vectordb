@@ -230,6 +230,55 @@ uv lock --check
 uv lock --upgrade
 ```
 
+## Database Schema
+
+### Tables
+
+**VectorStore** - Named collection of file chunks with vector embeddings
+- `id` (UUID, PK)
+- `name` (String)
+- `metadata_` (JSON)
+- `file_counts` (JSON)
+- `status` (Enum: expired, in_progress, completed)
+- `created_at`, `updated_at`, `expires_at` (DateTime)
+
+**File** - File uploaded to a vector store
+- `id` (UUID, PK)
+- `vector_store_id` (UUID, FK → vector_stores.id, CASCADE)
+- `filename` (String)
+- `status` (Enum: in_progress, completed, cancelled, failed)
+- `bytes` (Integer)
+- `purpose` (String)
+- `created_at` (DateTime)
+
+**FileChunk** - Text chunk from file with vector embedding
+- `id` (UUID, PK)
+- `file_id` (UUID, FK → files.id, CASCADE)
+- `vector_store_id` (UUID, FK → vector_stores.id, CASCADE)
+- `chunk_index` (Integer)
+- `content` (Text)
+- `token_count` (Integer)
+- `embedding` (Vector(1536)) - pgvector column with HNSW index
+- `metadata_` (JSON)
+- `created_at` (DateTime)
+
+**Indexes:**
+- `ix_file_chunks_embedding_hnsw` - HNSW index on embedding column for fast cosine similarity search
+
+### Connection Pooling
+
+Configured in `src/maia_vectordb/db/engine.py`:
+- **Pool size**: 5 base connections
+- **Max overflow**: 10 additional connections (15 total max)
+- **Pre-ping**: Health checks before using connections
+- **Recycle**: Recycle connections after 300 seconds
+
+### Startup DDL
+
+Tables and pgvector extension are created automatically on application startup via `init_engine()`:
+1. `CREATE EXTENSION IF NOT EXISTS vector`
+2. `Base.metadata.create_all()` - creates all tables
+
 ## Project Structure Guidelines
 
 ### Module Organization
@@ -238,26 +287,26 @@ uv lock --upgrade
 src/maia_vectordb/
 ├── api/              # FastAPI routes
 │   ├── __init__.py
-│   ├── vectors.py    # /vectors CRUD endpoints
-│   └── search.py     # /search similarity endpoint
+│   └── routes.py     # API endpoints
 ├── models/           # SQLAlchemy ORM models
 │   ├── __init__.py
-│   └── vector.py     # Vector table model
+│   ├── vector_store.py  # VectorStore model
+│   ├── file.py          # File model
+│   └── file_chunk.py    # FileChunk model with pgvector
 ├── schemas/          # Pydantic request/response schemas
 │   ├── __init__.py
-│   └── vector.py     # VectorCreate, VectorResponse, etc.
+│   └── vectors.py    # Vector store schemas
 ├── services/         # Business logic
 │   ├── __init__.py
 │   ├── embedding.py  # OpenAI embedding generation
-│   └── search.py     # Similarity search logic
+│   └── search.py     # Vector similarity search
 ├── core/             # Configuration
 │   ├── __init__.py
-│   ├── config.py     # Settings (env vars)
-│   └── logging.py    # Logging setup
+│   └── config.py     # Settings (env vars)
 └── db/               # Database
     ├── __init__.py
-    ├── session.py    # Async session factory
-    └── engine.py     # Async engine setup
+    ├── base.py       # SQLAlchemy Base
+    └── engine.py     # Async engine + session factory
 ```
 
 ### File Naming Conventions
