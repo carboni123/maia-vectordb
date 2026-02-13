@@ -26,10 +26,16 @@ cp .env.example .env
 # Edit .env with your actual values
 
 # Build and run
+make up
+
+# Or manually
 docker compose up --build
 
-# Or run in background
+# Run in background
 docker compose up -d
+
+# Stop services
+make down
 ```
 
 ## Development Workflow
@@ -54,6 +60,11 @@ uv run mypy src
 
 # Run tests
 uv run pytest tests -v
+
+# Or use Makefile shortcuts:
+make lint  # Run ruff check + format check + mypy
+make test  # Run pytest with coverage
+make dev   # Run local dev server with auto-reload
 ```
 
 ### 2. Writing Tests
@@ -759,7 +770,7 @@ All exceptions are converted to a consistent JSON error envelope:
 
 **Log Format**:
 ```
-2025-02-13T10:30:45 INFO [maia_vectordb.core.middleware] GET /v1/vector_stores 200 45.2ms [request_id=abc-123]
+2026-02-13T10:30:45 INFO [maia_vectordb.core.middleware] GET /v1/vector_stores 200 45.2ms [request_id=abc-123]
 ```
 
 ### Structured Logging (`core/logging_config.py`)
