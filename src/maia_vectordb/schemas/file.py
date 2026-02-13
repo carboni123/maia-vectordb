@@ -19,11 +19,12 @@ class FileUploadResponse(BaseModel):
     filename: str
     status: str
     bytes: int = 0
+    chunk_count: int = 0
     purpose: str = "assistants"
     created_at: int
 
     @classmethod
-    def from_orm_model(cls, obj: Any) -> "FileUploadResponse":
+    def from_orm_model(cls, obj: Any, *, chunk_count: int = 0) -> "FileUploadResponse":
         """Build response from a File ORM instance."""
         obj_id = getattr(obj, "id")
         obj_vs_id = getattr(obj, "vector_store_id")
@@ -41,6 +42,7 @@ class FileUploadResponse(BaseModel):
                 obj_status.value if hasattr(obj_status, "value") else str(obj_status)
             ),
             bytes=obj_bytes,
+            chunk_count=chunk_count,
             purpose=obj_purpose,
             created_at=int(obj_created_at.timestamp()),
         )

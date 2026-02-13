@@ -53,6 +53,13 @@ async def dispose_engine() -> None:
         _session_factory = None
 
 
+def get_session_factory() -> async_sessionmaker[AsyncSession]:
+    """Return the session factory for background tasks."""
+    if _session_factory is None:
+        raise RuntimeError("Database engine not initialised. Call init_engine() first.")
+    return _session_factory
+
+
 async def get_db_session() -> AsyncIterator[AsyncSession]:
     """Yield an async database session (FastAPI dependency)."""
     if _session_factory is None:

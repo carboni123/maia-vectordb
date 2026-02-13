@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 import maia_vectordb.models  # noqa: F401  — register all ORM models with Base.metadata
+from maia_vectordb.api.files import router as files_router
 from maia_vectordb.api.vector_stores import router as vector_stores_router
 from maia_vectordb.db.engine import dispose_engine, init_engine
 
@@ -36,6 +37,7 @@ app.add_middleware(
 
 
 app.include_router(vector_stores_router)
+app.include_router(files_router)
 
 
 @app.get("/health")
