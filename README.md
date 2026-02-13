@@ -13,11 +13,13 @@ OpenAI-compatible vector store API for document storage, chunking, embedding, an
 - **Health Monitoring**: Built-in health check endpoint with database connectivity and configuration status
 - **OpenAPI Documentation**: Interactive API docs at `/docs` with complete request/response examples
 
-## Quick Start
+## Documentation
 
-See [docs/SETUP.md](docs/SETUP.md) for detailed installation and setup instructions.
-
-See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for development workflow and API documentation.
+- **[Quick Start Guide](docs/SETUP.md)** - Installation and setup instructions
+- **[Development Guide](docs/DEVELOPMENT.md)** - Development workflow, testing, and API documentation
+- **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment instructions
+- **[Contributing Guide](CONTRIBUTING.md)** - Guidelines for contributing to the project
+- **[Changelog](CHANGELOG.md)** - Version history and release notes
 
 ## Tech Stack
 
