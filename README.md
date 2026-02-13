@@ -9,6 +9,7 @@ OpenAI-compatible vector store API for document storage, chunking, embedding, an
 - **Background Processing**: Large files processed asynchronously with status tracking
 - **Semantic Search**: Fast vector similarity search using pgvector HNSW indexes
 - **OpenAI-Compatible API**: Drop-in replacement for OpenAI's vector store endpoints
+- **Error Handling & Middleware**: Consistent error responses, request logging, and correlation IDs
 
 ## Quick Start
 

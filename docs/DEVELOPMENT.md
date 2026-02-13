@@ -578,6 +578,101 @@ Response:
 
 ---
 
+## Error Handling & Middleware
+
+### Exception Hierarchy (`core/exceptions.py`)
+
+**Purpose**: Provide a consistent exception hierarchy with proper HTTP status code mapping.
+
+**Exception Classes**:
+- `APIError` (base, 500) - Base exception for all API errors
+- `NotFoundError` (404) - Resource not found
+- `ValidationError` (400) - Invalid request input
+- `EmbeddingServiceError` (502) - Embedding service unavailable
+- `DatabaseError` (503) - Database operation failed
+
+**Usage Example**:
+```python
+from maia_vectordb.core.exceptions import NotFoundError, ValidationError
+
+# Raise custom exceptions in your code
+def get_vector_store(store_id: UUID) -> VectorStore:
+    """Get vector store by ID."""
+    store = session.get(VectorStore, store_id)
+    if not store:
+        raise NotFoundError(f"Vector store {store_id} not found")
+    return store
+
+# Validation errors
+if not filename.endswith(('.txt', '.md')):
+    raise ValidationError("Only .txt and .md files supported")
+```
+
+### Global Exception Handlers (`core/handlers.py`)
+
+All exceptions are converted to a consistent JSON error envelope:
+
+```json
+{
+  "error": {
+    "message": "Resource not found",
+    "type": "not_found",
+    "code": 404
+  }
+}
+```
+
+**Handlers**:
+- `api_error_handler` - Handles all `APIError` subclasses
+- `http_exception_handler` - Wraps FastAPI/Starlette `HTTPException`
+- `validation_exception_handler` - Wraps Pydantic `RequestValidationError`
+- `unhandled_exception_handler` - Catch-all for unexpected exceptions (never leaks stack traces)
+
+### Middleware (`core/middleware.py`)
+
+**RequestIDMiddleware**:
+- Generates/echoes `X-Request-ID` header for correlation
+- Stores request ID in `request.state.request_id`
+- Useful for distributed tracing and log correlation
+
+**RequestLoggingMiddleware**:
+- Logs every request: method, path, status code, duration, request ID
+- Acts as outermost safety net catching unhandled exceptions
+- Returns safe 500 JSON response on unhandled errors (no stack trace leaks)
+
+**Log Format**:
+```
+2025-02-13T10:30:45 INFO [maia_vectordb.core.middleware] GET /v1/vector_stores 200 45.2ms [request_id=abc-123]
+```
+
+### Structured Logging (`core/logging_config.py`)
+
+**Configuration**:
+```python
+from maia_vectordb.core.logging_config import setup_logging
+
+# Configure at app startup (already done in main.py)
+setup_logging(level=logging.INFO)
+
+# Use in your modules
+import logging
+logger = logging.getLogger(__name__)
+
+logger.info("Processing file upload")
+logger.warning("Rate limit approaching")
+logger.error("Failed to connect to embedding service")
+```
+
+**Log Format**:
+```
+%(asctime)s %(levelname)s [%(name)s] %(message)s
+```
+
+**Production Mode**:
+- Stack traces are never leaked to clients
+- Internal errors logged server-side with full traceback
+- Clients receive safe "Internal server error" message
+
 ## Project Structure Guidelines
 
 ### Module Organization
@@ -586,7 +681,8 @@ Response:
 src/maia_vectordb/
 ├── api/              # FastAPI routes
 │   ├── __init__.py
-│   └── vector_stores.py  # Vector store CRUD endpoints
+│   ├── vector_stores.py  # Vector store CRUD endpoints
+│   └── files.py          # File upload & processing endpoints
 ├── models/           # SQLAlchemy ORM models
 │   ├── __init__.py
 │   ├── vector_store.py  # VectorStore model
@@ -594,14 +690,19 @@ src/maia_vectordb/
 │   └── file_chunk.py    # FileChunk model with pgvector
 ├── schemas/          # Pydantic request/response schemas
 │   ├── __init__.py
-│   └── vector_store.py  # Vector store schemas
+│   ├── vector_store.py  # Vector store schemas
+│   └── file.py          # File schemas
 ├── services/         # Business logic
 │   ├── __init__.py
 │   ├── chunking.py   # Recursive text splitter
 │   └── embedding.py  # OpenAI embedding generation
-├── core/             # Configuration
+├── core/             # Configuration & error handling
 │   ├── __init__.py
-│   └── config.py     # Settings (env vars)
+│   ├── config.py        # Settings (env vars)
+│   ├── exceptions.py    # Custom exception hierarchy
+│   ├── handlers.py      # Global exception handlers
+│   ├── middleware.py    # Request logging & ID middleware
+│   └── logging_config.py # Structured logging setup
 └── db/               # Database
     ├── __init__.py
     ├── base.py       # SQLAlchemy Base
