@@ -90,9 +90,7 @@ class TestFileModel:
 
     def test_foreign_key_to_vector_store(self) -> None:
         table = File.__table__
-        fk_targets = {
-            str(fk.target_fullname) for fk in table.foreign_keys
-        }
+        fk_targets = {str(fk.target_fullname) for fk in table.foreign_keys}
         assert "vector_stores.id" in fk_targets
 
     def test_cascade_delete_on_fk(self) -> None:
@@ -142,16 +140,12 @@ class TestFileChunkModel:
 
     def test_foreign_key_to_file(self) -> None:
         table = FileChunk.__table__
-        fk_targets = {
-            str(fk.target_fullname) for fk in table.foreign_keys
-        }
+        fk_targets = {str(fk.target_fullname) for fk in table.foreign_keys}
         assert "files.id" in fk_targets
 
     def test_foreign_key_to_vector_store(self) -> None:
         table = FileChunk.__table__
-        fk_targets = {
-            str(fk.target_fullname) for fk in table.foreign_keys
-        }
+        fk_targets = {str(fk.target_fullname) for fk in table.foreign_keys}
         assert "vector_stores.id" in fk_targets
 
     def test_cascade_delete_on_fks(self) -> None:

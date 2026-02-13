@@ -31,9 +31,7 @@ class File(Base):
 
     __tablename__ = "files"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     vector_store_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("vector_stores.id", ondelete="CASCADE")
     )
@@ -43,9 +41,7 @@ class File(Base):
         default=FileStatus.in_progress,
     )
     bytes: Mapped[int] = mapped_column(Integer, default=0)
-    purpose: Mapped[str] = mapped_column(
-        String(64), default="assistants"
-    )
+    purpose: Mapped[str] = mapped_column(String(64), default="assistants")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

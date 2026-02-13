@@ -25,9 +25,7 @@ class FileChunk(Base):
 
     __tablename__ = "file_chunks"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     file_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("files.id", ondelete="CASCADE")
     )
@@ -37,9 +35,7 @@ class FileChunk(Base):
     chunk_index: Mapped[int] = mapped_column(Integer)
     content: Mapped[str] = mapped_column(Text)
     token_count: Mapped[int] = mapped_column(Integer, default=0)
-    embedding: Mapped[Any] = mapped_column(
-        Vector(EMBEDDING_DIMENSION), nullable=True
-    )
+    embedding: Mapped[Any] = mapped_column(Vector(EMBEDDING_DIMENSION), nullable=True)
     metadata_: Mapped[dict[str, object] | None] = mapped_column(
         "metadata", JSON, nullable=True, default=None
     )
@@ -47,9 +43,7 @@ class FileChunk(Base):
         DateTime(timezone=True), server_default=func.now()
     )
 
-    file: Mapped["File"] = relationship(
-        "File", back_populates="chunks"
-    )
+    file: Mapped["File"] = relationship("File", back_populates="chunks")
     vector_store: Mapped["VectorStore"] = relationship(
         "VectorStore", back_populates="chunks"
     )

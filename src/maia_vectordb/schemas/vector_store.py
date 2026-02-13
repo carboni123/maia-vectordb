@@ -1,5 +1,7 @@
 """Pydantic schemas for vector store API endpoints."""
 
+from __future__ import annotations
+
 from datetime import datetime
 from typing import Any
 
@@ -42,7 +44,7 @@ class VectorStoreResponse(BaseModel):
     @classmethod
     def from_orm_model(
         cls,
-        obj: object,
+        obj: Any,
     ) -> "VectorStoreResponse":
         """Build response from a VectorStore ORM instance."""
         # Access attributes via getattr for type safety

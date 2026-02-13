@@ -31,9 +31,7 @@ class VectorStore(Base):
 
     __tablename__ = "vector_stores"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(255))
     metadata_: Mapped[dict[str, object] | None] = mapped_column(
         "metadata", JSON, nullable=True, default=None

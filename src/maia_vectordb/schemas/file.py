@@ -1,5 +1,7 @@
 """Pydantic schemas for file API endpoints."""
 
+from __future__ import annotations
+
 from datetime import datetime
 from typing import Any
 
@@ -21,7 +23,7 @@ class FileUploadResponse(BaseModel):
     created_at: int
 
     @classmethod
-    def from_orm_model(cls, obj: object) -> "FileUploadResponse":
+    def from_orm_model(cls, obj: Any) -> "FileUploadResponse":
         """Build response from a File ORM instance."""
         obj_id = getattr(obj, "id")
         obj_vs_id = getattr(obj, "vector_store_id")
