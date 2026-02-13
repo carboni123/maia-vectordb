@@ -3,70 +3,12 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Generator
-from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
 from fastapi.testclient import TestClient
 
-from maia_vectordb.db.engine import get_db_session
-from maia_vectordb.main import app
-from maia_vectordb.models.vector_store import VectorStoreStatus
-
-
-def _make_store(
-    *,
-    name: str = "test-store",
-    metadata_: dict[str, Any] | None = None,
-    store_id: uuid.UUID | None = None,
-) -> MagicMock:
-    """Create a mock that looks like a VectorStore ORM instance."""
-    store = MagicMock()
-    store.id = store_id or uuid.uuid4()
-    store.name = name
-    store.metadata_ = metadata_
-    store.file_counts = None
-    store.status = VectorStoreStatus.completed
-    store.created_at = datetime(2025, 1, 1, tzinfo=UTC)
-    store.updated_at = datetime(2025, 1, 1, tzinfo=UTC)
-    store.expires_at = None
-    return store
-
-
-# ---------------------------------------------------------------------------
-# Fixture: override the get_db_session dependency with a mock
-# ---------------------------------------------------------------------------
-
-_STORE_ATTRS = (
-    "id",
-    "name",
-    "metadata_",
-    "file_counts",
-    "status",
-    "created_at",
-    "updated_at",
-    "expires_at",
-)
-
-
-@pytest.fixture()
-def mock_session() -> AsyncMock:
-    """Return a mock async session."""
-    return AsyncMock()
-
-
-@pytest.fixture()
-def client(mock_session: AsyncMock) -> Generator[TestClient, None, None]:
-    """TestClient with the DB session overridden."""
-
-    async def _override() -> Any:  # noqa: ANN401
-        yield mock_session
-
-    app.dependency_overrides[get_db_session] = _override
-    yield TestClient(app)
-    app.dependency_overrides.clear()
+from tests.conftest import make_refresh, make_store
 
 
 # ---------------------------------------------------------------------------

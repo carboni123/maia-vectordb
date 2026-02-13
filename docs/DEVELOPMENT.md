@@ -576,6 +576,79 @@ Response:
 - **Background Processing**: Uses FastAPI `BackgroundTasks` for large files
 - **Session Management**: Background tasks create their own sessions via `get_session_factory()`
 
+### Similarity Search (`/v1/vector_stores/{id}/search`)
+
+**Search Vector Store** - `POST /v1/vector_stores/{vector_store_id}/search`
+
+Perform semantic similarity search over a vector store using cosine similarity.
+
+Request body:
+```json
+{
+  "query": "What is machine learning?",
+  "max_results": 10,
+  "filter": {"category": "science"},
+  "score_threshold": 0.8
+}
+```
+
+Parameters:
+- `query` (string, required) - Text query to search for
+- `max_results` (integer, optional, default: 10, range: 1-100) - Maximum number of results
+- `filter` (object, optional) - Metadata filters (key-value pairs, AND logic)
+- `score_threshold` (float, optional, range: 0.0-1.0) - Minimum similarity score
+
+```bash
+curl -X POST http://localhost:8000/v1/vector_stores/550e8400-e29b-41d4-a716-446655440000/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "machine learning applications",
+    "max_results": 5,
+    "filter": {"category": "science", "lang": "en"},
+    "score_threshold": 0.7
+  }'
+```
+
+Response:
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "file_id": "660e8400-e29b-41d4-a716-446655440001",
+      "filename": "ml_guide.txt",
+      "chunk_index": 0,
+      "content": "Machine learning is a subset of artificial intelligence...",
+      "score": 0.92,
+      "metadata": {"category": "science", "lang": "en"}
+    },
+    {
+      "file_id": "660e8400-e29b-41d4-a716-446655440002",
+      "filename": "ai_intro.txt",
+      "chunk_index": 2,
+      "content": "Applications of ML include computer vision, NLP...",
+      "score": 0.85,
+      "metadata": {"category": "science", "lang": "en"}
+    }
+  ],
+  "search_query": "machine learning applications"
+}
+```
+
+**How It Works:**
+1. Query text is embedded on-the-fly using OpenAI's embedding API
+2. Cosine similarity search performed using pgvector's `<=>` operator
+3. Metadata filters applied as SQL WHERE clauses (JSON containment)
+4. Score threshold filters out low-relevance results
+5. Results ranked by similarity score (highest first)
+
+**Implementation Details:**
+- **Query Embedding**: Generated on-the-fly via `embed_texts([query])[0]`
+- **Similarity Metric**: Cosine distance (pgvector `<=>` operator), converted to score: `1 - distance`
+- **Metadata Filtering**: Uses `metadata->>'key' = 'value'` SQL clauses (multiple filters combined with AND)
+- **Score Threshold**: Applied as distance threshold: `distance <= 1 - threshold`
+- **Performance**: HNSW index on embedding column enables fast approximate nearest neighbor search
+
 ---
 
 ## Error Handling & Middleware
