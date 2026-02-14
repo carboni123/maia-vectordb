@@ -1,1 +1,85 @@
-Generic single-database configuration with an async dbapi.
+# Alembic Database Migrations
+
+Generic single-database configuration with an async dbapi (asyncpg).
+
+## Quick Reference
+
+### Create a New Migration
+
+```bash
+# Auto-generate migration from model changes
+uv run alembic revision --autogenerate -m "description of changes"
+
+# Create empty migration template
+uv run alembic revision -m "description of changes"
+```
+
+### Apply Migrations
+
+```bash
+# Upgrade to latest version
+uv run alembic upgrade head
+
+# Upgrade one version
+uv run alembic upgrade +1
+
+# Upgrade to specific revision
+uv run alembic upgrade <revision_id>
+```
+
+### Rollback Migrations
+
+```bash
+# Downgrade one version
+uv run alembic downgrade -1
+
+# Downgrade to specific revision
+uv run alembic downgrade <revision_id>
+
+# Downgrade to base (WARNING: removes all tables)
+uv run alembic downgrade base
+```
+
+### Migration History
+
+```bash
+# Show current revision
+uv run alembic current
+
+# Show migration history
+uv run alembic history
+
+# Show pending migrations
+uv run alembic heads
+```
+
+### Configuration
+
+- **Database URL**: Configured via `DATABASE_URL` environment variable
+- **Models**: Auto-detected from `src/maia_vectordb/models/`
+- **Versions**: Stored in `alembic/versions/`
+
+### Important Notes
+
+- Always review auto-generated migrations before applying
+- Test migrations in development before production
+- Keep migrations in version control
+- Migrations run asynchronously using asyncpg driver
+- pgvector extension is created automatically on app startup
+
+### Example Workflow
+
+```bash
+# 1. Make changes to models in src/maia_vectordb/models/
+# 2. Generate migration
+uv run alembic revision --autogenerate -m "add user_id to files"
+
+# 3. Review generated migration in alembic/versions/
+# 4. Apply migration
+uv run alembic upgrade head
+
+# 5. Verify in database
+psql $DATABASE_URL -c "\d files"
+```
+
+For more information, see [Alembic documentation](https://alembic.sqlalchemy.org/).

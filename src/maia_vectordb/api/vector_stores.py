@@ -5,18 +5,17 @@ from __future__ import annotations
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from maia_vectordb.db.engine import get_db_session
-from maia_vectordb.models.vector_store import VectorStore
 from maia_vectordb.schemas.vector_store import (
     CreateVectorStoreRequest,
     DeleteVectorStoreResponse,
     VectorStoreListResponse,
     VectorStoreResponse,
 )
+from maia_vectordb.services import vector_store_service
 
 router = APIRouter(prefix="/v1/vector_stores", tags=["vector_stores"])
 
@@ -29,10 +28,11 @@ async def create_vector_store(
     session: DBSession,
 ) -> VectorStoreResponse:
     """Create a new vector store."""
-    store = VectorStore(name=body.name, metadata_=body.metadata)
-    session.add(store)
-    await session.commit()
-    await session.refresh(store)
+    store = await vector_store_service.create_vector_store(
+        session=session,
+        name=body.name,
+        metadata=body.metadata,
+    )
     return VectorStoreResponse.from_orm_model(store)
 
 
@@ -44,17 +44,12 @@ async def list_vector_stores(
     order: Annotated[str, Query(pattern="^(asc|desc)$")] = "desc",
 ) -> VectorStoreListResponse:
     """List vector stores with pagination."""
-    order_col = (
-        VectorStore.created_at.asc()
-        if order == "asc"
-        else VectorStore.created_at.desc()
+    stores, has_more = await vector_store_service.list_vector_stores(
+        session=session,
+        limit=limit,
+        offset=offset,
+        order=order,
     )
-    stmt = select(VectorStore).order_by(order_col).offset(offset).limit(limit + 1)
-    result = await session.execute(stmt)
-    rows = list(result.scalars().all())
-
-    has_more = len(rows) > limit
-    stores = rows[:limit]
 
     data = [VectorStoreResponse.from_orm_model(s) for s in stores]
     return VectorStoreListResponse(
@@ -71,9 +66,10 @@ async def get_vector_store(
     session: DBSession,
 ) -> VectorStoreResponse:
     """Retrieve a single vector store by ID."""
-    store = await session.get(VectorStore, vector_store_id)
-    if store is None:
-        raise HTTPException(status_code=404, detail="Vector store not found")
+    store = await vector_store_service.get_vector_store(
+        session=session,
+        store_id=vector_store_id,
+    )
     return VectorStoreResponse.from_orm_model(store)
 
 
@@ -83,10 +79,8 @@ async def delete_vector_store(
     session: DBSession,
 ) -> DeleteVectorStoreResponse:
     """Delete a vector store and all its documents (cascade)."""
-    store = await session.get(VectorStore, vector_store_id)
-    if store is None:
-        raise HTTPException(status_code=404, detail="Vector store not found")
-    store_id = str(store.id)
-    await session.delete(store)
-    await session.commit()
+    store_id = await vector_store_service.delete_vector_store(
+        session=session,
+        store_id=vector_store_id,
+    )
     return DeleteVectorStoreResponse(id=store_id)

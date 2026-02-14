@@ -16,7 +16,8 @@ OpenAI-compatible vector store API for document storage, chunking, embedding, an
 ## Documentation
 
 - **[Quick Start Guide](docs/SETUP.md)** - Installation and setup instructions
-- **[Development Guide](docs/DEVELOPMENT.md)** - Development workflow, testing, and API documentation
+- **[API Reference](docs/API.md)** - Complete API endpoint documentation
+- **[Development Guide](docs/DEVELOPMENT.md)** - Development workflow, testing, and debugging
 - **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment instructions
 - **[Contributing Guide](CONTRIBUTING.md)** - Guidelines for contributing to the project
 - **[Changelog](CHANGELOG.md)** - Version history and release notes
