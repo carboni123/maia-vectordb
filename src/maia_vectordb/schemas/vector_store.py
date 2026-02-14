@@ -17,8 +17,9 @@ class FileCounts(BaseModel):
     failed: int = 0
     total: int = 0
 
-    model_config = {
-        "json_schema_extra": {
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
             "examples": [
                 {
                     "in_progress": 0,
@@ -28,8 +29,8 @@ class FileCounts(BaseModel):
                     "total": 3,
                 }
             ]
-        }
-    }
+        },
+    )
 
 
 class CreateVectorStoreRequest(BaseModel):
@@ -39,8 +40,9 @@ class CreateVectorStoreRequest(BaseModel):
     metadata: dict[str, Any] | None = None
     expires_after: dict[str, Any] | None = None
 
-    model_config = {
-        "json_schema_extra": {
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
             "examples": [
                 {
                     "name": "my-knowledge-base",
@@ -48,8 +50,8 @@ class CreateVectorStoreRequest(BaseModel):
                     "expires_after": None,
                 }
             ]
-        }
-    }
+        },
+    )
 
 
 class VectorStoreResponse(BaseModel):
@@ -133,8 +135,9 @@ class VectorStoreListResponse(BaseModel):
     last_id: str | None = None
     has_more: bool = False
 
-    model_config = {
-        "json_schema_extra": {
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
             "examples": [
                 {
                     "object": "list",
@@ -162,8 +165,8 @@ class VectorStoreListResponse(BaseModel):
                     "has_more": False,
                 }
             ]
-        }
-    }
+        },
+    )
 
 
 class DeleteVectorStoreResponse(BaseModel):
@@ -173,8 +176,9 @@ class DeleteVectorStoreResponse(BaseModel):
     object: str = Field(default="vector_store.deleted")
     deleted: bool = True
 
-    model_config = {
-        "json_schema_extra": {
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
             "examples": [
                 {
                     "id": "550e8400-e29b-41d4-a716-446655440000",
@@ -182,5 +186,5 @@ class DeleteVectorStoreResponse(BaseModel):
                     "deleted": True,
                 }
             ]
-        }
-    }
+        },
+    )

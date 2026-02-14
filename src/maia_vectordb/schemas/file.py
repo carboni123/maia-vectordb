@@ -74,8 +74,9 @@ class FileListResponse(BaseModel):
     last_id: str | None = None
     has_more: bool = False
 
-    model_config = {
-        "json_schema_extra": {
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
             "examples": [
                 {
                     "object": "list",
@@ -97,5 +98,5 @@ class FileListResponse(BaseModel):
                     "has_more": False,
                 }
             ]
-        }
-    }
+        },
+    )

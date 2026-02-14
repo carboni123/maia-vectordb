@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class SearchRequest(BaseModel):
@@ -13,8 +13,9 @@ class SearchRequest(BaseModel):
     filter: dict[str, Any] | None = None
     score_threshold: float | None = Field(default=None, ge=0.0, le=1.0)
 
-    model_config = {
-        "json_schema_extra": {
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
             "examples": [
                 {
                     "query": "How does authentication work?",
@@ -23,8 +24,8 @@ class SearchRequest(BaseModel):
                     "score_threshold": 0.7,
                 }
             ]
-        }
-    }
+        },
+    )
 
 
 class SearchResult(BaseModel):
@@ -37,8 +38,9 @@ class SearchResult(BaseModel):
     score: float
     metadata: dict[str, Any] | None = None
 
-    model_config = {
-        "json_schema_extra": {
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
             "examples": [
                 {
                     "file_id": "660e8400-e29b-41d4-a716-446655440001",
@@ -49,8 +51,8 @@ class SearchResult(BaseModel):
                     "metadata": {"source": "docs"},
                 }
             ]
-        }
-    }
+        },
+    )
 
 
 class SearchResponse(BaseModel):
@@ -60,8 +62,9 @@ class SearchResponse(BaseModel):
     data: list["SearchResult"]
     search_query: str
 
-    model_config = {
-        "json_schema_extra": {
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
             "examples": [
                 {
                     "object": "list",
@@ -78,5 +81,5 @@ class SearchResponse(BaseModel):
                     "search_query": "How does authentication work?",
                 }
             ]
-        }
-    }
+        },
+    )
