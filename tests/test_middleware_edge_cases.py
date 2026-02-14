@@ -104,7 +104,11 @@ class TestExceptionHandlers:
 
             # Verify response
             assert response.status_code == 500
-            body = response.body if isinstance(response.body, bytes) else bytes(response.body)
+            body = (
+                response.body
+                if isinstance(response.body, bytes)
+                else bytes(response.body)
+            )
             assert "Internal server error" in body.decode()
 
     @pytest.mark.asyncio
@@ -117,7 +121,11 @@ class TestExceptionHandlers:
 
         response = await unhandled_exception_handler(mock_request, test_exception)
 
-        body = response.body if isinstance(response.body, bytes) else bytes(response.body)
+        body = (
+            response.body
+            if isinstance(response.body, bytes)
+            else bytes(response.body)
+        )
         response_body = body.decode()
 
         # Should not contain stack trace information
