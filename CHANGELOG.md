@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The `/health` endpoint remains unauthenticated for liveness/readiness probes.
   The server refuses to start if `API_KEYS` is empty.
 
+### Changed
+- **Async embedding service** (`services/embedding.py`): Migrated from `openai.OpenAI`
+  (synchronous) to `openai.AsyncOpenAI`. The `embed_texts` and `_call_with_retry` functions
+  are now `async`; the retry back-off uses `asyncio.sleep()` instead of `time.sleep()`.
+  This eliminates event-loop blocking during embedding API calls and back-offs, allowing
+  concurrent requests to be served normally even while retrying transient OpenAI errors.
+  Call sites in `api/files.py` and `api/search.py` updated to `await embed_texts(...)`.
+
 ### Planned
 - Metadata filtering improvements
 - Batch file upload support

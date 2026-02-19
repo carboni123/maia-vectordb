@@ -79,32 +79,38 @@ on which code path triggers the error.
 
 ---
 
-## 3. Synchronous Blocking Inside Async Event Loop  (HIGH)
+## 3. ~~Synchronous Blocking Inside Async Event Loop~~  ✅ RESOLVED
+
+> **Fixed in commit `133e21d`** (`feat: migrate embedding service to async (AsyncOpenAI + asyncio.sleep)`)
 
 **Convention:** "Async throughout (FastAPI, SQLAlchemy async, asyncpg)" per
 CONTRIBUTING.md.
 
-### 3a. `time.sleep()` blocks the event loop
+### 3a. ~~`time.sleep()` blocks the event loop~~ → fixed: `asyncio.sleep()`
 
 ```python
-# services/embedding.py:111
-time.sleep(backoff)   # blocks for 1s, 2s, 4s, 8s, 16s (up to 31s total)
+# services/embedding.py:111  — AFTER FIX
+await asyncio.sleep(backoff)   # yields control to event loop during back-off
 ```
 
-Called from async route handlers (`search`) and async background tasks
-(`_process_file_background`). During retries the **entire server is
-unresponsive**.
+`time.sleep()` is gone from `embedding.py`. It still exists in
+`embedding_provider.py:OpenAIEmbeddingProvider._call_with_retry`, which is a
+**synchronous utility class** used only in examples and test scaffolding — it
+is never imported by any FastAPI endpoint handler.
 
-### 3b. Synchronous OpenAI client used in async context
+### 3b. ~~Synchronous OpenAI client used in async context~~ → fixed: `AsyncOpenAI`
 
 ```python
-# services/embedding.py:26-28
-def _get_client() -> openai.OpenAI:           # sync client
-    return openai.OpenAI(api_key=...)
+# services/embedding.py:26-28  — AFTER FIX
+def _get_client() -> openai.AsyncOpenAI:
+    return openai.AsyncOpenAI(api_key=settings.openai_api_key)
+
+async def embed_texts(texts: Sequence[str], ...) -> list[list[float]]:
 ```
 
-Every embedding call makes a synchronous HTTP request. Should use
-`openai.AsyncOpenAI` or wrap in `asyncio.to_thread()`.
+All call sites (`api/files.py:61`, `api/search.py:53`) use `await embed_texts(...)`.
+The async HTTP client (`httpx` under the hood) yields control for every network
+round-trip, so concurrent requests no longer block the event loop.
 
 ---
 
@@ -325,11 +331,12 @@ doesn't belong in a text-splitting service.
 | Severity | Count | Key Themes |
 |----------|-------|------------|
 | CRITICAL | 1 | Missing service layer across 3 of 4 API domains |
-| HIGH | 5 | Unused exception hierarchy, sync-in-async, raw SQL in handlers, committed `.coverage`, CORS misconfiguration |
+| HIGH | 4 | Unused exception hierarchy, raw SQL in handlers, committed `.coverage`, CORS misconfiguration |
+| HIGH | ~~1~~ ✅ | ~~Sync-in-async (embedding service)~~ — **resolved in `133e21d`** |
 | MEDIUM | 6 | Duplicated code, hardcoded config, wrong token counting, misleading HTTP status, test anti-patterns, health endpoint inconsistencies |
 | LOW | 2 | Weak typing in `from_orm_model`, orphan `read_file` function |
 
-### Top 3 Recommendations
+### Top Recommendations
 
 1. **Extract service modules** for vector stores, file processing, and search.
    Move all database queries and business logic out of route handlers.
@@ -338,6 +345,6 @@ doesn't belong in a text-splitting service.
    `HTTPException` calls with `NotFoundError`, `ValidationError`, etc. to get
    consistent error envelopes project-wide.
 
-3. **Make the embedding service async.** Switch to `openai.AsyncOpenAI`,
-   replace `time.sleep()` with `asyncio.sleep()`, and eliminate event loop
-   blocking.
+3. ~~**Make the embedding service async.**~~ ✅ **Done** — `openai.AsyncOpenAI`
+   and `asyncio.sleep()` are now used throughout `services/embedding.py`
+   (commit `133e21d`).
