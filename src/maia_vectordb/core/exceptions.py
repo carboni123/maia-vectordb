@@ -66,3 +66,13 @@ class FileTooLargeError(APIError):
 
     def __init__(self, message: str = "File exceeds maximum allowed size") -> None:
         super().__init__(message)
+
+
+class RateLimitError(APIError):
+    """Raised when a client exceeds the configured request rate limit."""
+
+    status_code: int = 429
+    error_type: str = "rate_limit_exceeded"
+
+    def __init__(self, message: str = "Rate limit exceeded. Please slow down.") -> None:
+        super().__init__(message)

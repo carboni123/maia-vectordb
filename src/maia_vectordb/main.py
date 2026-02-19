@@ -3,9 +3,14 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from prometheus_fastapi_instrumentator import Instrumentator
+from slowapi import Limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
 from sqlalchemy import text
 
 import maia_vectordb.models  # noqa: F401  — register all ORM models with Base.metadata
@@ -46,6 +51,20 @@ TAG_METADATA = [
     },
 ]
 
+# --- Rate limiter ---
+# Created at module level so it is available when the app processes requests.
+# default_limits applies to every route that does not have its own @limiter.limit
+# or @limiter.exempt decorator.
+_limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=[f"{settings.rate_limit_per_minute}/minute"],
+)
+
+# --- Prometheus instrumentator ---
+# Calling instrument() without add() activates the default metric set which
+# includes both http_request_duration_seconds and http_requests_total.
+_instrumentator = Instrumentator()
+
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
@@ -73,13 +92,44 @@ app = FastAPI(
     openapi_tags=TAG_METADATA,
 )
 
+# Attach limiter to app state so SlowAPIMiddleware can find it.
+app.state.limiter = _limiter
+
 # --- Exception handlers (consistent JSON error envelope) ---
 register_exception_handlers(app)
 
-# --- Middleware (outermost first) ---
-# Starlette processes middleware in reverse-add order so the last-added
-# middleware runs first.  We want RequestID before Logging so the log
-# line can include the request_id.
+
+def _rate_limit_exceeded_handler(
+    _request: Request,
+    _exc: Exception,
+) -> JSONResponse:
+    """Return 429 with the standard error envelope on rate limit violations.
+
+    Must be a regular (non-async) function: SlowAPIMiddleware calls it
+    synchronously inside its dispatch loop and falls back to the built-in
+    handler when the registered handler is a coroutine function.
+    """
+    return JSONResponse(
+        status_code=429,
+        content={
+            "error": {
+                "message": "Rate limit exceeded. Please slow down.",
+                "type": "rate_limit_exceeded",
+                "code": 429,
+            }
+        },
+    )
+
+
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Instrument app for Prometheus metrics (adds middleware that records every request).
+# The default instrumentation provides http_request_duration_seconds (histogram)
+# and http_requests_total (counter).
+_instrumentator.instrument(app)
+
+# --- Middleware (last-added runs first per Starlette reversal) ---
+# Stack execution order: RequestID -> Logging -> CORS -> SlowAPI -> route handler
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(RequestIDMiddleware)
 app.add_middleware(
@@ -89,6 +139,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(SlowAPIMiddleware)
 
 
 # All v1 routes require a valid X-API-Key header.
@@ -97,6 +148,9 @@ _auth = [Depends(verify_api_key)]
 app.include_router(vector_stores_router, dependencies=_auth)
 app.include_router(files_router, dependencies=_auth)
 app.include_router(search_router, dependencies=_auth)
+
+# Expose Prometheus metrics endpoint (no auth — intended for internal scraping).
+_instrumentator.expose(app, endpoint="/metrics", include_in_schema=False)
 
 
 @app.get(

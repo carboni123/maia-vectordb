@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     # Upload limit — default 10 MB
     max_file_size_bytes: int = 10 * 1024 * 1024
 
+    # Rate limiting — max requests per minute per IP (0 = disabled)
+    rate_limit_per_minute: int = 60
+
     @field_validator("api_keys", mode="before")
     @classmethod
     def parse_api_keys(cls, v: Any) -> list[str]:
