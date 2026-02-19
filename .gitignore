@@ -18,3 +18,7 @@ node_modules/
 .vscode/
 *.swp
 /.mypy_cache
+
+# Coverage
+.coverage
+htmlcov/
