@@ -44,7 +44,7 @@ _TEST_DSN = (
 _mock_provider = MockEmbeddingProvider()
 
 
-def _mock_embed_texts(texts: Any, *, model: Any = None) -> list[list[float]]:
+async def _mock_embed_texts(texts: Any, *, model: Any = None) -> list[list[float]]:
     """Drop-in replacement for ``embed_texts`` that uses MockEmbeddingProvider."""
     return _mock_provider.embed_texts(texts)
 

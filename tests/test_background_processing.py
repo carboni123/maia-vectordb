@@ -17,7 +17,7 @@ class TestBackgroundProcessing:
 
     @pytest.mark.asyncio
     @patch("maia_vectordb.api.files.get_session_factory")
-    @patch("maia_vectordb.api.files._process_chunks_sync")
+    @patch("maia_vectordb.api.files._process_chunks")
     async def test_background_success_updates_file_status(
         self,
         mock_process_chunks: MagicMock,
@@ -57,7 +57,7 @@ class TestBackgroundProcessing:
 
     @pytest.mark.asyncio
     @patch("maia_vectordb.api.files.get_session_factory")
-    @patch("maia_vectordb.api.files._process_chunks_sync")
+    @patch("maia_vectordb.api.files._process_chunks")
     async def test_background_exception_marks_file_failed(
         self,
         mock_process_chunks: MagicMock,
@@ -93,7 +93,7 @@ class TestBackgroundProcessing:
 
     @pytest.mark.asyncio
     @patch("maia_vectordb.api.files.get_session_factory")
-    @patch("maia_vectordb.api.files._process_chunks_sync")
+    @patch("maia_vectordb.api.files._process_chunks")
     async def test_background_handles_missing_file(
         self,
         mock_process_chunks: MagicMock,
@@ -125,7 +125,7 @@ class TestBackgroundProcessing:
 
     @pytest.mark.asyncio
     @patch("maia_vectordb.api.files.get_session_factory")
-    @patch("maia_vectordb.api.files._process_chunks_sync")
+    @patch("maia_vectordb.api.files._process_chunks")
     async def test_background_exception_with_missing_file(
         self,
         mock_process_chunks: MagicMock,
@@ -157,7 +157,7 @@ class TestBackgroundProcessing:
 
     @pytest.mark.asyncio
     @patch("maia_vectordb.api.files.get_session_factory")
-    @patch("maia_vectordb.api.files._process_chunks_sync")
+    @patch("maia_vectordb.api.files._process_chunks")
     async def test_background_empty_chunks_still_completes(
         self,
         mock_process_chunks: MagicMock,

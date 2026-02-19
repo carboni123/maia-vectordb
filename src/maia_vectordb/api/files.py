@@ -48,17 +48,17 @@ async def _validate_vector_store(
     return store
 
 
-def _process_chunks_sync(
+async def _process_chunks(
     text: str,
     file_id: uuid.UUID,
     vector_store_id: uuid.UUID,
 ) -> list[FileChunk]:
-    """Chunk text, embed, and return FileChunk ORM objects (CPU/IO-bound)."""
+    """Chunk text, embed, and return FileChunk ORM objects."""
     chunks = split_text(text)
     if not chunks:
         return []
 
-    embeddings = embed_texts(chunks)
+    embeddings = await embed_texts(chunks)
 
     return [
         FileChunk(
@@ -83,7 +83,7 @@ async def _process_file_background(
     factory = get_session_factory()
     async with factory() as session:
         try:
-            chunk_objs = _process_chunks_sync(text, file_id, vector_store_id)
+            chunk_objs = await _process_chunks(text, file_id, vector_store_id)
             session.add_all(chunk_objs)
 
             file_obj = await session.get(File, file_id)
@@ -166,7 +166,7 @@ async def upload_file(
 
     # Inline processing for small files
     try:
-        chunk_objs = _process_chunks_sync(content, file_record.id, vector_store_id)
+        chunk_objs = await _process_chunks(content, file_record.id, vector_store_id)
         session.add_all(chunk_objs)
         file_record.status = FileStatus.completed
         await session.commit()

@@ -50,7 +50,7 @@ async def search(
     await _validate_vector_store(session, vector_store_id)
 
     # 1. Embed the query
-    query_embedding = embed_texts([body.query])[0]
+    query_embedding = (await embed_texts([body.query]))[0]
 
     # 2. Build the similarity search query
     #    pgvector <=> returns cosine *distance* (0 = identical, 2 = opposite).

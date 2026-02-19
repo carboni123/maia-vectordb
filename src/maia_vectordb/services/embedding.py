@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
-import time
 from typing import Sequence
 
 import openai
@@ -23,12 +23,12 @@ _BACKOFF_FACTOR = 2.0
 _RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 
 
-def _get_client() -> openai.OpenAI:
-    """Build a synchronous OpenAI client from settings."""
-    return openai.OpenAI(api_key=settings.openai_api_key)
+def _get_client() -> openai.AsyncOpenAI:
+    """Build an async OpenAI client from settings."""
+    return openai.AsyncOpenAI(api_key=settings.openai_api_key)
 
 
-def embed_texts(
+async def embed_texts(
     texts: Sequence[str],
     *,
     model: str | None = None,
@@ -58,7 +58,7 @@ def embed_texts(
 
     for batch_start in range(0, len(texts), _MAX_BATCH_SIZE):
         batch = list(texts[batch_start : batch_start + _MAX_BATCH_SIZE])
-        response = _call_with_retry(client, batch, model)
+        response = await _call_with_retry(client, batch, model)
 
         # OpenAI returns embeddings sorted by index within the batch
         for item in sorted(response.data, key=lambda d: d.index):
@@ -67,8 +67,8 @@ def embed_texts(
     return all_embeddings
 
 
-def _call_with_retry(
-    client: openai.OpenAI,
+async def _call_with_retry(
+    client: openai.AsyncOpenAI,
     texts: list[str],
     model: str,
 ) -> openai.types.CreateEmbeddingResponse:
@@ -78,7 +78,7 @@ def _call_with_retry(
 
     for attempt in range(_MAX_RETRIES):
         try:
-            return client.embeddings.create(input=texts, model=model)
+            return await client.embeddings.create(input=texts, model=model)
         except openai.RateLimitError as exc:
             last_exc = exc
             logger.warning(
@@ -108,7 +108,7 @@ def _call_with_retry(
                 backoff,
             )
 
-        time.sleep(backoff)
+        await asyncio.sleep(backoff)
         backoff *= _BACKOFF_FACTOR
 
     # Exhausted retries
@@ -116,7 +116,7 @@ def _call_with_retry(
     raise last_exc
 
 
-def chunk_and_embed(
+async def chunk_and_embed(
     text: str,
     *,
     chunk_size: int | None = None,
@@ -145,5 +145,5 @@ def chunk_and_embed(
     if not chunks:
         return []
 
-    embeddings = embed_texts(chunks, model=model)
+    embeddings = await embed_texts(chunks, model=model)
     return list(zip(chunks, embeddings, strict=True))

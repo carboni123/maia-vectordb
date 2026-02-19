@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 
 class TestEmbeddingClientCreation:
@@ -10,12 +10,13 @@ class TestEmbeddingClientCreation:
 
     @patch("maia_vectordb.services.embedding.settings")
     def test_get_client_creates_openai_client(self, mock_settings: MagicMock) -> None:
-        """_get_client creates OpenAI client with correct API key."""
+        """_get_client creates AsyncOpenAI client with correct API key."""
         from maia_vectordb.services.embedding import _get_client
 
         mock_settings.openai_api_key = "test-api-key-123"
 
-        with patch("maia_vectordb.services.embedding.openai.OpenAI") as mock_openai:
+        _patch = "maia_vectordb.services.embedding.openai.AsyncOpenAI"
+        with patch(_patch) as mock_openai:
             mock_client = MagicMock()
             mock_openai.return_value = mock_client
 
@@ -33,7 +34,8 @@ class TestEmbeddingClientCreation:
         test_key = "sk-test-key-from-settings"
         mock_settings.openai_api_key = test_key
 
-        with patch("maia_vectordb.services.embedding.openai.OpenAI") as mock_openai:
+        _patch = "maia_vectordb.services.embedding.openai.AsyncOpenAI"
+        with patch(_patch) as mock_openai:
             _get_client()
 
             # Verify the key from settings was used
@@ -46,7 +48,7 @@ class TestEmbedTextsEdgeCases:
 
     @patch("maia_vectordb.services.embedding._get_client")
     @patch("maia_vectordb.services.embedding.settings")
-    def test_embed_texts_uses_default_model(
+    async def test_embed_texts_uses_default_model(
         self, mock_settings: MagicMock, mock_get_client: MagicMock
     ) -> None:
         """embed_texts uses default model from settings when not specified."""
@@ -59,11 +61,11 @@ class TestEmbedTextsEdgeCases:
         mock_response.data = [
             MagicMock(index=0, embedding=[0.1, 0.2, 0.3]),
         ]
-        mock_client.embeddings.create.return_value = mock_response
+        mock_client.embeddings.create = AsyncMock(return_value=mock_response)
         mock_get_client.return_value = mock_client
 
         # Call without model parameter
-        result = embed_texts(["test text"])
+        result = await embed_texts(["test text"])
 
         # Verify default model was used
         call_kwargs = mock_client.embeddings.create.call_args.kwargs
@@ -71,7 +73,7 @@ class TestEmbedTextsEdgeCases:
         assert len(result) == 1
 
     @patch("maia_vectordb.services.embedding._get_client")
-    def test_embed_texts_custom_model_overrides_default(
+    async def test_embed_texts_custom_model_overrides_default(
         self, mock_get_client: MagicMock
     ) -> None:
         """embed_texts uses custom model when provided."""
@@ -82,11 +84,11 @@ class TestEmbedTextsEdgeCases:
         mock_response.data = [
             MagicMock(index=0, embedding=[0.1, 0.2]),
         ]
-        mock_client.embeddings.create.return_value = mock_response
+        mock_client.embeddings.create = AsyncMock(return_value=mock_response)
         mock_get_client.return_value = mock_client
 
         # Call with custom model
-        embed_texts(["test"], model="text-embedding-3-large")
+        await embed_texts(["test"], model="text-embedding-3-large")
 
         # Verify custom model was used
         call_kwargs = mock_client.embeddings.create.call_args.kwargs
@@ -94,7 +96,7 @@ class TestEmbedTextsEdgeCases:
 
     @patch("maia_vectordb.services.embedding._get_client")
     @patch("maia_vectordb.services.embedding.settings")
-    def test_embed_texts_maintains_order_across_batches(
+    async def test_embed_texts_maintains_order_across_batches(
         self, mock_settings: MagicMock, mock_get_client: MagicMock
     ) -> None:
         """embed_texts maintains correct order when processing multiple batches."""
@@ -117,13 +119,13 @@ class TestEmbedTextsEdgeCases:
             ]
             return response
 
-        mock_client.embeddings.create.side_effect = lambda input, model: (
-            create_response(input)
+        mock_client.embeddings.create = AsyncMock(
+            side_effect=lambda input, model: create_response(input)
         )
         mock_get_client.return_value = mock_client
 
         with patch("maia_vectordb.services.embedding._MAX_BATCH_SIZE", 2):
-            result = embed_texts(texts)
+            result = await embed_texts(texts)
 
         # Verify order is maintained
         assert len(result) == 5
@@ -135,15 +137,15 @@ class TestChunkAndEmbedEdgeCases:
 
     @patch("maia_vectordb.services.embedding.embed_texts")
     @patch("maia_vectordb.services.embedding.split_text")
-    def test_chunk_and_embed_returns_empty_for_empty_text(
-        self, mock_split: MagicMock, mock_embed: MagicMock
+    async def test_chunk_and_embed_returns_empty_for_empty_text(
+        self, mock_split: MagicMock, mock_embed: AsyncMock
     ) -> None:
         """chunk_and_embed returns empty list for text that produces no chunks."""
         from maia_vectordb.services.embedding import chunk_and_embed
 
         mock_split.return_value = []
 
-        result = chunk_and_embed("")
+        result = await chunk_and_embed("")
 
         assert result == []
         mock_split.assert_called_once()
@@ -151,8 +153,8 @@ class TestChunkAndEmbedEdgeCases:
 
     @patch("maia_vectordb.services.embedding.embed_texts")
     @patch("maia_vectordb.services.embedding.split_text")
-    def test_chunk_and_embed_with_custom_parameters(
-        self, mock_split: MagicMock, mock_embed: MagicMock
+    async def test_chunk_and_embed_with_custom_parameters(
+        self, mock_split: MagicMock, mock_embed: AsyncMock
     ) -> None:
         """chunk_and_embed passes custom parameters to split_text and embed_texts."""
         from maia_vectordb.services.embedding import chunk_and_embed
@@ -160,7 +162,7 @@ class TestChunkAndEmbedEdgeCases:
         mock_split.return_value = ["chunk1", "chunk2"]
         mock_embed.return_value = [[0.1, 0.2], [0.3, 0.4]]
 
-        result = chunk_and_embed(
+        result = await chunk_and_embed(
             "test text",
             chunk_size=200,
             chunk_overlap=50,
