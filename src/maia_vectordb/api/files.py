@@ -11,12 +11,16 @@ from fastapi import (
     BackgroundTasks,
     Depends,
     Form,
-    HTTPException,
     UploadFile,
 )
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from maia_vectordb.core.exceptions import (
+    EmbeddingServiceError,
+    NotFoundError,
+    ValidationError,
+)
 from maia_vectordb.db.engine import get_db_session, get_session_factory
 from maia_vectordb.models.file import File, FileStatus
 from maia_vectordb.models.file_chunk import FileChunk
@@ -44,7 +48,7 @@ async def _validate_vector_store(
     """Return the vector store or raise 404."""
     store = await session.get(VectorStore, vector_store_id)
     if store is None:
-        raise HTTPException(status_code=404, detail="Vector store not found")
+        raise NotFoundError("Vector store not found")
     return store
 
 
@@ -118,10 +122,7 @@ async def _read_upload_content(
         encoded = text.encode("utf-8")
         return text, "raw_text.txt", len(encoded)
 
-    raise HTTPException(
-        status_code=400,
-        detail="Provide either a file upload or a 'text' field.",
-    )
+    raise ValidationError("Provide either a file upload or a 'text' field.")
 
 
 @router.post("", status_code=201, response_model=FileUploadResponse)
@@ -178,8 +179,7 @@ async def upload_file(
         logger.exception("Failed to process file %s", file_record.id)
         file_record.status = FileStatus.failed
         await session.commit()
-        await session.refresh(file_record)
-        return FileUploadResponse.from_orm_model(file_record, chunk_count=0)
+        raise EmbeddingServiceError("File processing failed")
 
 
 @router.get("/{file_id}", response_model=FileUploadResponse)
@@ -193,7 +193,7 @@ async def get_file(
 
     file_obj = await session.get(File, file_id)
     if file_obj is None or file_obj.vector_store_id != vector_store_id:
-        raise HTTPException(status_code=404, detail="File not found")
+        raise NotFoundError("File not found")
 
     # Count chunks
     stmt = select(FileChunk.id).where(FileChunk.file_id == file_id)

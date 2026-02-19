@@ -269,14 +269,14 @@ class TestUploadProcessingFailure:
 
     @patch("maia_vectordb.api.files.embed_texts")
     @patch("maia_vectordb.api.files.split_text")
-    def test_processing_failure_marks_file_failed(
+    def test_processing_failure_returns_502(
         self,
         mock_split: MagicMock,
         mock_embed: MagicMock,
         client: TestClient,
         mock_session: MagicMock,
     ) -> None:
-        """File status set to failed when processing errors out."""
+        """AC3: Inline processing failure returns 502, not 201."""
         store_id = uuid.uuid4()
         store = make_store(store_id=store_id)
         file_mock = make_file(
@@ -299,10 +299,12 @@ class TestUploadProcessingFailure:
             },
         )
 
-        assert resp.status_code == 201
+        assert resp.status_code == 502
         body = resp.json()
-        assert body["status"] == "failed"
-        assert body["chunk_count"] == 0
+        assert "error" in body
+        assert body["error"]["code"] == 502
+        assert body["error"]["type"] == "embedding_service_error"
+        assert body["error"]["message"] == "File processing failed"
 
 
 # ---------------------------------------------------------------------------

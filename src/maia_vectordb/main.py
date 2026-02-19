@@ -121,8 +121,8 @@ async def health() -> JSONResponse:
         factory = get_session_factory()
         async with factory() as session:
             await session.execute(text("SELECT 1"))
-    except Exception as exc:
-        db_health = ComponentHealth(status="error", detail=str(exc))
+    except Exception:
+        db_health = ComponentHealth(status="error", detail="Database connection failed")
 
     # Check OpenAI API key presence
     openai_key_set = bool(settings.openai_api_key)

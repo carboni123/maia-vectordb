@@ -6,10 +6,11 @@ import logging
 import uuid
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from maia_vectordb.core.exceptions import NotFoundError
 from maia_vectordb.db.engine import get_db_session
 from maia_vectordb.models.vector_store import VectorStore
 from maia_vectordb.schemas.search import SearchRequest, SearchResponse, SearchResult
@@ -31,7 +32,7 @@ async def _validate_vector_store(
     """Return the vector store or raise 404."""
     store = await session.get(VectorStore, vector_store_id)
     if store is None:
-        raise HTTPException(status_code=404, detail="Vector store not found")
+        raise NotFoundError("Vector store not found")
     return store
 
 

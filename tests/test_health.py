@@ -45,7 +45,7 @@ class TestHealthEndpoint:
         body = response.json()
         assert body["status"] == "degraded"
         assert body["database"]["status"] == "error"
-        assert "Database engine not initialised" in body["database"]["detail"]
+        assert body["database"]["detail"] == "Database connection failed"
 
     def test_health_503_when_session_query_fails(self) -> None:
         """Returns 503 when SELECT 1 query fails."""
@@ -65,7 +65,7 @@ class TestHealthEndpoint:
         body = response.json()
         assert body["status"] == "degraded"
         assert body["database"]["status"] == "error"
-        assert "Connection refused" in body["database"]["detail"]
+        assert body["database"]["detail"] == "Database connection failed"
 
     def test_health_openai_key_flag_true(self) -> None:
         """Reports openai_api_key_set=True when key is configured."""
