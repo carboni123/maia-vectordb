@@ -11,10 +11,20 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
+from maia_vectordb.core.auth import verify_api_key
+from maia_vectordb.core.config import settings
 from maia_vectordb.db.engine import get_db_session
 from maia_vectordb.main import app
 from maia_vectordb.models.file import FileStatus
 from maia_vectordb.models.vector_store import VectorStoreStatus
+
+# ---------------------------------------------------------------------------
+# Ensure api_keys is non-empty for all tests so:
+#   1. Startup validation in lifespan() passes.
+#   2. The verify_api_key dependency (when not overridden) can be satisfied
+#      by sending headers={"X-API-Key": "test-key"}.
+# ---------------------------------------------------------------------------
+settings.api_keys = ["test-key"]
 
 # ---------------------------------------------------------------------------
 # Mock factory helpers
@@ -115,12 +125,13 @@ def mock_session() -> MagicMock:
 
 @pytest.fixture()
 def client(mock_session: MagicMock) -> Generator[TestClient, None, None]:
-    """TestClient with the DB session dependency overridden."""
+    """TestClient with the DB session dependency and auth overridden."""
 
     async def _override() -> Any:
         yield mock_session
 
     app.dependency_overrides[get_db_session] = _override
+    app.dependency_overrides[verify_api_key] = lambda: "test-key"
     yield TestClient(app)
     app.dependency_overrides.clear()
 

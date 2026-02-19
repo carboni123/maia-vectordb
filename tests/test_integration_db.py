@@ -42,9 +42,7 @@ class TestDatabaseInfrastructure:
         assert row is not None
         assert row[0] == "vector"
 
-    async def test_vector_stores_table_exists(
-        self, db_session: AsyncSession
-    ) -> None:
+    async def test_vector_stores_table_exists(self, db_session: AsyncSession) -> None:
         """The ``vector_stores`` table is created with expected columns."""
         result = await db_session.execute(
             text(
@@ -73,9 +71,7 @@ class TestDatabaseInfrastructure:
         assert "filename" in columns
         assert "status" in columns
 
-    async def test_file_chunks_table_exists(
-        self, db_session: AsyncSession
-    ) -> None:
+    async def test_file_chunks_table_exists(self, db_session: AsyncSession) -> None:
         """The ``file_chunks`` table has the embedding vector column."""
         result = await db_session.execute(
             text(
@@ -110,9 +106,7 @@ class TestDatabaseInfrastructure:
 class TestVectorStoreCRUD:
     """Test vector store lifecycle against real PostgreSQL."""
 
-    async def test_create_vector_store(
-        self, integration_client: AsyncClient
-    ) -> None:
+    async def test_create_vector_store(self, integration_client: AsyncClient) -> None:
         """POST /v1/vector_stores creates a persisted store."""
         resp = await integration_client.post(
             "/v1/vector_stores", json={"name": "test-store"}
@@ -136,16 +130,10 @@ class TestVectorStoreCRUD:
         body = resp.json()
         assert body["metadata"] == {"env": "test", "version": 2}
 
-    async def test_list_vector_stores(
-        self, integration_client: AsyncClient
-    ) -> None:
+    async def test_list_vector_stores(self, integration_client: AsyncClient) -> None:
         """GET /v1/vector_stores returns created stores."""
-        await integration_client.post(
-            "/v1/vector_stores", json={"name": "store-alpha"}
-        )
-        await integration_client.post(
-            "/v1/vector_stores", json={"name": "store-beta"}
-        )
+        await integration_client.post("/v1/vector_stores", json={"name": "store-alpha"})
+        await integration_client.post("/v1/vector_stores", json={"name": "store-beta"})
 
         resp = await integration_client.get("/v1/vector_stores")
         assert resp.status_code == 200
@@ -193,9 +181,7 @@ class TestVectorStoreCRUD:
         resp = await integration_client.get(f"/v1/vector_stores/{fake_id}")
         assert resp.status_code == 404
 
-    async def test_delete_vector_store(
-        self, integration_client: AsyncClient
-    ) -> None:
+    async def test_delete_vector_store(self, integration_client: AsyncClient) -> None:
         """DELETE /v1/vector_stores/{id} removes the store."""
         create_resp = await integration_client.post(
             "/v1/vector_stores", json={"name": "delete-me"}
@@ -228,9 +214,7 @@ class TestVectorStoreCRUD:
 class TestFileUpload:
     """Test file upload, chunking, and embedding against real PostgreSQL."""
 
-    async def test_upload_text_file(
-        self, integration_client: AsyncClient
-    ) -> None:
+    async def test_upload_text_file(self, integration_client: AsyncClient) -> None:
         """POST uploads a file, chunks it, and creates embeddings."""
         store_resp = await integration_client.post(
             "/v1/vector_stores", json={"name": "upload-store"}
@@ -250,9 +234,7 @@ class TestFileUpload:
         assert body["chunk_count"] >= 1
         assert body["bytes"] == len(content.encode())
 
-    async def test_upload_raw_text(
-        self, integration_client: AsyncClient
-    ) -> None:
+    async def test_upload_raw_text(self, integration_client: AsyncClient) -> None:
         """POST with text form field creates file from raw text."""
         store_resp = await integration_client.post(
             "/v1/vector_stores", json={"name": "raw-text-store"}
@@ -294,9 +276,7 @@ class TestFileUpload:
         )
         assert resp.status_code == 404
 
-    async def test_get_file_status(
-        self, integration_client: AsyncClient
-    ) -> None:
+    async def test_get_file_status(self, integration_client: AsyncClient) -> None:
         """GET file status returns correct chunk count."""
         store_resp = await integration_client.post(
             "/v1/vector_stores", json={"name": "file-status-store"}
@@ -318,9 +298,7 @@ class TestFileUpload:
         assert body["status"] == "completed"
         assert body["chunk_count"] == expected_chunks
 
-    async def test_get_file_not_found(
-        self, integration_client: AsyncClient
-    ) -> None:
+    async def test_get_file_not_found(self, integration_client: AsyncClient) -> None:
         """GET non-existent file returns 404."""
         store_resp = await integration_client.post(
             "/v1/vector_stores", json={"name": "file-404-store"}
@@ -349,9 +327,7 @@ class TestSimilaritySearch:
         document: str,
     ) -> tuple[str, str]:
         """Helper: create a store, upload a document, return (store_id, file_id)."""
-        store_resp = await client.post(
-            "/v1/vector_stores", json={"name": store_name}
-        )
+        store_resp = await client.post("/v1/vector_stores", json={"name": store_name})
         store_id = store_resp.json()["id"]
 
         upload_resp = await client.post(
@@ -477,9 +453,7 @@ class TestSimilaritySearch:
         self, integration_client: AsyncClient
     ) -> None:
         """Search respects max_results limit."""
-        long_text = " ".join(
-            [f"Paragraph {i}: " + "word " * 200 for i in range(10)]
-        )
+        long_text = " ".join([f"Paragraph {i}: " + "word " * 200 for i in range(10)])
         store_id, _ = await self._create_store_with_document(
             integration_client,
             "limit-store",
@@ -516,9 +490,7 @@ class TestCascadeDelete:
 
         await integration_client.post(
             f"/v1/vector_stores/{store_id}/files",
-            files={
-                "file": ("cascade.txt", b"Content for cascade test.", "text/plain")
-            },
+            files={"file": ("cascade.txt", b"Content for cascade test.", "text/plain")},
         )
 
         # Verify data exists

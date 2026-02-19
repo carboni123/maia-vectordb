@@ -3,7 +3,7 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
@@ -12,6 +12,7 @@ import maia_vectordb.models  # noqa: F401  — register all ORM models with Base
 from maia_vectordb.api.files import router as files_router
 from maia_vectordb.api.search import router as search_router
 from maia_vectordb.api.vector_stores import router as vector_stores_router
+from maia_vectordb.core.auth import verify_api_key
 from maia_vectordb.core.config import settings
 from maia_vectordb.core.handlers import register_exception_handlers
 from maia_vectordb.core.logging_config import setup_logging
@@ -49,6 +50,11 @@ TAG_METADATA = [
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """Manage application startup and shutdown."""
+    if not settings.api_keys:
+        raise ValueError(
+            "API_KEYS must be configured before starting the server. "
+            "Set the API_KEYS environment variable to a comma-separated list of keys."
+        )
     await init_engine()
     yield
     await dispose_engine()
@@ -85,9 +91,12 @@ app.add_middleware(
 )
 
 
-app.include_router(vector_stores_router)
-app.include_router(files_router)
-app.include_router(search_router)
+# All v1 routes require a valid X-API-Key header.
+_auth = [Depends(verify_api_key)]
+
+app.include_router(vector_stores_router, dependencies=_auth)
+app.include_router(files_router, dependencies=_auth)
+app.include_router(search_router, dependencies=_auth)
 
 
 @app.get(

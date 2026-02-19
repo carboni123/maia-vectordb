@@ -122,9 +122,7 @@ class TestExceptionHandlers:
         response = await unhandled_exception_handler(mock_request, test_exception)
 
         body = (
-            response.body
-            if isinstance(response.body, bytes)
-            else bytes(response.body)
+            response.body if isinstance(response.body, bytes) else bytes(response.body)
         )
         response_body = body.decode()
 

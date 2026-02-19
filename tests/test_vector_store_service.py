@@ -30,9 +30,7 @@ from tests.conftest import make_store
 class TestCreateVectorStore:
     """Tests for create_vector_store service function."""
 
-    async def test_create_adds_store_to_session(
-        self, mock_session: MagicMock
-    ) -> None:
+    async def test_create_adds_store_to_session(self, mock_session: MagicMock) -> None:
         mock_session.refresh = AsyncMock()
 
         await create_vector_store(mock_session, name="new-store")
@@ -49,18 +47,14 @@ class TestCreateVectorStore:
 
         mock_session.commit.assert_awaited_once()
 
-    async def test_create_refreshes_after_commit(
-        self, mock_session: MagicMock
-    ) -> None:
+    async def test_create_refreshes_after_commit(self, mock_session: MagicMock) -> None:
         mock_session.refresh = AsyncMock()
 
         store = await create_vector_store(mock_session, name="s")
 
         mock_session.refresh.assert_awaited_once_with(store)
 
-    async def test_create_returns_orm_object(
-        self, mock_session: MagicMock
-    ) -> None:
+    async def test_create_returns_orm_object(self, mock_session: MagicMock) -> None:
         mock_session.refresh = AsyncMock()
 
         result = await create_vector_store(mock_session, name="my-store")
@@ -96,9 +90,7 @@ class TestCreateVectorStore:
 class TestListVectorStores:
     """Tests for list_vector_stores service function."""
 
-    def _mock_execute(
-        self, session: MagicMock, rows: list[MagicMock]
-    ) -> None:
+    def _mock_execute(self, session: MagicMock, rows: list[MagicMock]) -> None:
         """Set up mock_session.execute to return *rows* via scalars().all()."""
         result = MagicMock()
         result.scalars.return_value.all.return_value = rows
@@ -125,9 +117,7 @@ class TestListVectorStores:
         assert len(stores) == 3
         assert has_more is False
 
-    async def test_has_more_when_extra_row(
-        self, mock_session: MagicMock
-    ) -> None:
+    async def test_has_more_when_extra_row(self, mock_session: MagicMock) -> None:
         # Return limit+1 rows to trigger has_more=True
         rows = [make_store(name=f"s-{i}") for i in range(3)]
         self._mock_execute(mock_session, rows)
@@ -142,9 +132,7 @@ class TestListVectorStores:
     async def test_offset_forwarded(self, mock_session: MagicMock) -> None:
         self._mock_execute(mock_session, [])
 
-        await list_vector_stores(
-            mock_session, limit=10, offset=5, order="asc"
-        )
+        await list_vector_stores(mock_session, limit=10, offset=5, order="asc")
 
         mock_session.execute.assert_awaited_once()
 
@@ -204,9 +192,7 @@ class TestGetVectorStore:
 class TestDeleteVectorStore:
     """Tests for delete_vector_store service function."""
 
-    async def test_found_deletes_and_commits(
-        self, mock_session: MagicMock
-    ) -> None:
+    async def test_found_deletes_and_commits(self, mock_session: MagicMock) -> None:
         store = make_store(name="doomed")
         mock_session.get = AsyncMock(return_value=store)
 
@@ -216,9 +202,7 @@ class TestDeleteVectorStore:
         mock_session.commit.assert_awaited_once()
         assert result == str(store.id)
 
-    async def test_found_returns_id_string(
-        self, mock_session: MagicMock
-    ) -> None:
+    async def test_found_returns_id_string(self, mock_session: MagicMock) -> None:
         store = make_store(name="to-remove")
         mock_session.get = AsyncMock(return_value=store)
 

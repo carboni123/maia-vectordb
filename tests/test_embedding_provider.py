@@ -132,7 +132,9 @@ class TestOpenAIEmbeddingProvider:
         mock_client = MagicMock()
 
         def side_effect(
-            *, input: list[str], model: str  # noqa: A002
+            *,
+            input: list[str],
+            model: str,  # noqa: A002
         ) -> openai.types.CreateEmbeddingResponse:
             return _make_response(input)
 
@@ -176,7 +178,9 @@ class TestOpenAIEmbeddingProvider:
         calls = 0
 
         def side_effect(
-            *, input: list[str], model: str  # noqa: A002
+            *,
+            input: list[str],
+            model: str,  # noqa: A002
         ) -> openai.types.CreateEmbeddingResponse:
             nonlocal calls
             calls += 1

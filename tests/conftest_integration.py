@@ -38,8 +38,7 @@ _PG_PORT = 5432
 _TEST_DB = "maia_vectors_test"
 _ADMIN_DSN = f"postgresql://{_PG_USER}:{_PG_PASSWORD}@{_PG_HOST}:{_PG_PORT}/postgres"
 _TEST_DSN = (
-    f"postgresql+asyncpg://{_PG_USER}:{_PG_PASSWORD}"
-    f"@{_PG_HOST}:{_PG_PORT}/{_TEST_DB}"
+    f"postgresql+asyncpg://{_PG_USER}:{_PG_PASSWORD}@{_PG_HOST}:{_PG_PORT}/{_TEST_DB}"
 )
 
 _mock_provider = MockEmbeddingProvider()
