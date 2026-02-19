@@ -16,8 +16,10 @@ from fastapi import (
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from maia_vectordb.core.config import settings
 from maia_vectordb.core.exceptions import (
     EmbeddingServiceError,
+    FileTooLargeError,
     NotFoundError,
     ValidationError,
 )
@@ -143,6 +145,13 @@ async def upload_file(
 
     # 2. Read content
     content, filename, byte_size = await _read_upload_content(file, text)
+
+    # 2a. Enforce upload size limit
+    if byte_size > settings.max_file_size_bytes:
+        raise FileTooLargeError(
+            f"File size {byte_size} bytes exceeds the limit of "
+            f"{settings.max_file_size_bytes} bytes."
+        )
 
     # 3. Create File record
     file_record = File(

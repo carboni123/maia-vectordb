@@ -56,3 +56,13 @@ class DatabaseError(APIError):
 
     def __init__(self, message: str = "Database error") -> None:
         super().__init__(message)
+
+
+class FileTooLargeError(APIError):
+    """Raised when an uploaded file exceeds the configured size limit."""
+
+    status_code: int = 413
+    error_type: str = "file_too_large"
+
+    def __init__(self, message: str = "File exceeds maximum allowed size") -> None:
+        super().__init__(message)

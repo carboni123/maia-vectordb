@@ -11,9 +11,14 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 # access to the values within the .ini file in use.
 config = context.config
 
-# Override sqlalchemy.url from environment variable if set
-if url := os.environ.get("DATABASE_URL"):
-    config.set_main_option("sqlalchemy.url", url)
+# Always read DATABASE_URL from the environment so alembic.ini never needs
+# to be edited across environments. Falls back to the same default used by
+# the application (host.docker.internal for Docker Compose deployments).
+_db_url = os.environ.get(
+    "DATABASE_URL",
+    "postgresql+asyncpg://postgres:postgres@host.docker.internal:5432/maia_vectors",
+)
+config.set_main_option("sqlalchemy.url", _db_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

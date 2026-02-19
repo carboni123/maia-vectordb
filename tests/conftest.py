@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import uuid
 from collections.abc import Generator
 from datetime import UTC, datetime
@@ -11,12 +12,20 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
-from maia_vectordb.core.auth import verify_api_key
-from maia_vectordb.core.config import settings
-from maia_vectordb.db.engine import get_db_session
-from maia_vectordb.main import app
-from maia_vectordb.models.file import FileStatus
-from maia_vectordb.models.vector_store import VectorStoreStatus
+# ---------------------------------------------------------------------------
+# Set OPENAI_API_KEY before any maia_vectordb import so that Settings()
+# (which now validates the key via model_validator) does not raise.
+# The actual OpenAI client is never called in unit tests because embed_texts
+# is always patched.
+# ---------------------------------------------------------------------------
+os.environ.setdefault("OPENAI_API_KEY", "test-key")
+
+from maia_vectordb.core.auth import verify_api_key  # noqa: E402
+from maia_vectordb.core.config import settings  # noqa: E402
+from maia_vectordb.db.engine import get_db_session  # noqa: E402
+from maia_vectordb.main import app  # noqa: E402
+from maia_vectordb.models.file import FileStatus  # noqa: E402
+from maia_vectordb.models.vector_store import VectorStoreStatus  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Ensure api_keys is non-empty for all tests so:
