@@ -150,7 +150,7 @@ async def integration_client(
         patch("maia_vectordb.api.files.embed_texts", side_effect=_mock_embed_texts),
         patch("maia_vectordb.api.search.embed_texts", side_effect=_mock_embed_texts),
     ):
-        transport = ASGITransport(app=app)  # type: ignore[arg-type]
+        transport = ASGITransport(app=app)
         async with AsyncClient(
             transport=transport, base_url="http://testserver"
         ) as client:

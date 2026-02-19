@@ -384,6 +384,7 @@ All errors return a consistent JSON envelope:
 ```
 
 **Error Types:**
+- `http_error` (401) - Missing or invalid API key
 - `not_found` (404) - Resource not found
 - `bad_request` (400) - Invalid request parameters
 - `embedding_service_error` (502) - OpenAI embedding service unavailable
@@ -394,6 +395,7 @@ All errors return a consistent JSON envelope:
 - `200 OK` - Request successful
 - `201 Created` - Resource created successfully
 - `400 Bad Request` - Invalid request parameters
+- `401 Unauthorized` - Missing or invalid `X-API-Key` header
 - `404 Not Found` - Resource not found
 - `500 Internal Server Error` - Unexpected server error
 - `502 Bad Gateway` - External service (OpenAI) unavailable
@@ -407,7 +409,28 @@ Currently, there are no API rate limits enforced. Consider implementing rate lim
 
 ## Authentication
 
-Currently, there is no authentication required. Consider implementing API key authentication for production use.
+All `/v1/*` endpoints require an `X-API-Key` header containing a valid API key.
+The `/health` endpoint is **exempt** from authentication and can be used for liveness/readiness probes without credentials.
+
+**Configuration:** set `API_KEYS` in your environment to a comma-separated list of accepted keys:
+
+```bash
+API_KEYS=key-one,key-two,key-three
+```
+
+The server will refuse to start if `API_KEYS` is empty or unset.
+
+**Error response when the key is absent or unrecognised (`401 Unauthorized`):**
+
+```json
+{
+  "error": {
+    "message": "Invalid or missing API key",
+    "type": "http_error",
+    "code": 401
+  }
+}
+```
 
 ## CORS
 
@@ -422,24 +445,30 @@ CORS is currently configured to allow all origins. Update `main.py` to restrict 
 ```python
 import requests
 
+BASE_URL = "http://localhost:8000"
+HEADERS = {"X-API-Key": "your-api-key"}
+
 # Create vector store
 response = requests.post(
-    "http://localhost:8000/v1/vector_stores",
-    json={"name": "My Store"}
+    f"{BASE_URL}/v1/vector_stores",
+    json={"name": "My Store"},
+    headers=HEADERS,
 )
 store_id = response.json()["id"]
 
 # Upload file
 with open("document.txt", "rb") as f:
     response = requests.post(
-        f"http://localhost:8000/v1/vector_stores/{store_id}/files",
-        files={"file": f}
+        f"{BASE_URL}/v1/vector_stores/{store_id}/files",
+        files={"file": f},
+        headers=HEADERS,
     )
 
 # Search
 response = requests.post(
-    f"http://localhost:8000/v1/vector_stores/{store_id}/search",
-    json={"query": "machine learning", "max_results": 5}
+    f"{BASE_URL}/v1/vector_stores/{store_id}/search",
+    json={"query": "machine learning", "max_results": 5},
+    headers=HEADERS,
 )
 results = response.json()["data"]
 ```

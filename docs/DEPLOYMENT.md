@@ -41,6 +41,10 @@ DATABASE_URL=postgresql+asyncpg://username:password@hostname:5432/database_name
 # OpenAI API credentials
 OPENAI_API_KEY=sk-your-production-api-key-here
 
+# API key authentication — comma-separated list of accepted X-API-Key values.
+# The server will NOT start if this is empty.
+API_KEYS=key-one,key-two
+
 # Optional: Embedding configuration
 EMBEDDING_MODEL=text-embedding-3-small  # or text-embedding-3-large
 CHUNK_SIZE=800                          # Max tokens per chunk

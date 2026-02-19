@@ -7,12 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **X-API-Key authentication**: All `/v1/*` routes now require a valid `X-API-Key` request header.
+  Configure accepted keys via the `API_KEYS` environment variable (comma-separated list).
+  The `/health` endpoint remains unauthenticated for liveness/readiness probes.
+  The server refuses to start if `API_KEYS` is empty.
+
 ### Planned
 - Metadata filtering improvements
 - Batch file upload support
 - Query result caching
 - Rate limiting
-- Authentication/API key support
 
 ## [0.1.0] - 2024-02-13
 

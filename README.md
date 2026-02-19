@@ -9,6 +9,7 @@ OpenAI-compatible vector store API for document storage, chunking, embedding, an
 - **Background Processing**: Large files processed asynchronously with status tracking
 - **Semantic Search**: Fast vector similarity search using pgvector HNSW indexes
 - **OpenAI-Compatible API**: Drop-in replacement for OpenAI's vector store endpoints
+- **API Key Authentication**: All `/v1/*` routes protected via `X-API-Key` header; `/health` exempt
 - **Error Handling & Middleware**: Consistent error responses, request logging, and correlation IDs
 - **Health Monitoring**: Built-in health check endpoint with database connectivity and configuration status
 - **OpenAPI Documentation**: Interactive API docs at `/docs` with complete request/response examples
