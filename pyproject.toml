@@ -50,6 +50,7 @@ select = ["E", "F", "I"]
 python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
+exclude = ["^examples/"]
 
 [[tool.mypy.overrides]]
 module = [
