@@ -4,7 +4,7 @@ These tests verify the full application stack: FastAPI routes, SQLAlchemy ORM,
 pgvector similarity search, and cascade deletes — all against a live database.
 
 Run with:
-    uv run pytest tests/test_integration_db.py -v -m integration
+    uv run pytest tests/integration/ -v -m integration
 """
 
 from __future__ import annotations
@@ -18,9 +18,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 # All tests in this module use the integration marker
 pytestmark = pytest.mark.integration
-
-# Import fixtures from conftest_integration
-pytest_plugins = ["tests.conftest_integration"]
 
 
 # ============================================================================

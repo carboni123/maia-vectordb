@@ -1,16 +1,12 @@
-"""Shared test fixtures for the MAIA VectorDB test suite."""
+"""Shared test helpers and constants for the MAIA VectorDB test suite."""
 
 from __future__ import annotations
 
 import os
 import uuid
-from collections.abc import Generator
 from datetime import UTC, datetime
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
-
-import pytest
-from fastapi.testclient import TestClient
+from unittest.mock import MagicMock
 
 # ---------------------------------------------------------------------------
 # Set OPENAI_API_KEY before any maia_vectordb import so that Settings()
@@ -20,10 +16,7 @@ from fastapi.testclient import TestClient
 # ---------------------------------------------------------------------------
 os.environ.setdefault("OPENAI_API_KEY", "test-key")
 
-from maia_vectordb.core.auth import verify_api_key  # noqa: E402
 from maia_vectordb.core.config import settings  # noqa: E402
-from maia_vectordb.db.engine import get_db_session  # noqa: E402
-from maia_vectordb.main import app  # noqa: E402
 from maia_vectordb.models.file import FileStatus  # noqa: E402
 from maia_vectordb.models.vector_store import VectorStoreStatus  # noqa: E402
 
@@ -114,44 +107,3 @@ def make_refresh(template: MagicMock, attrs: tuple[str, ...] = _STORE_ATTRS) -> 
             setattr(obj, attr, getattr(template, attr))
 
     return _refresh
-
-
-# ---------------------------------------------------------------------------
-# Shared session / client fixtures
-# ---------------------------------------------------------------------------
-
-
-@pytest.fixture()
-def mock_session() -> MagicMock:
-    """Return a mock async session with sync methods as plain MagicMock.
-
-    ``session.add`` and ``session.add_all`` are synchronous in SQLAlchemy, so
-    we use a ``MagicMock`` base with async overrides for truly-async methods
-    (``commit``, ``refresh``, ``execute``, ``get``, ``delete``).
-    """
-    session = MagicMock()
-    session.commit = AsyncMock()
-    session.refresh = AsyncMock()
-    session.execute = AsyncMock()
-    session.get = AsyncMock()
-    session.delete = AsyncMock()
-    return session
-
-
-@pytest.fixture()
-def client(mock_session: MagicMock) -> Generator[TestClient, None, None]:
-    """TestClient with the DB session dependency and auth overridden."""
-
-    async def _override() -> Any:
-        yield mock_session
-
-    app.dependency_overrides[get_db_session] = _override
-    app.dependency_overrides[verify_api_key] = lambda: "test-key"
-    yield TestClient(app)
-    app.dependency_overrides.clear()
-
-
-@pytest.fixture()
-def fake_embedding() -> list[float]:
-    """A 1536-dimensional fake embedding vector."""
-    return [0.1] * 1536

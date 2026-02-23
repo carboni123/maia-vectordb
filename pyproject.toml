@@ -68,5 +68,6 @@ ignore_missing_imports = true
 testpaths = ["tests"]
 asyncio_mode = "auto"
 markers = [
-    "integration: marks tests that call external APIs",
+    "integration: marks tests that need a real PostgreSQL database",
+    "e2e: marks end-to-end tests that need PostgreSQL + OpenAI API key",
 ]
