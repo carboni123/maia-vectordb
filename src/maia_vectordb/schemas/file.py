@@ -65,6 +65,14 @@ class FileUploadResponse(BaseModel):
         )
 
 
+class DeleteFileResponse(BaseModel):
+    """Response body for deleting a file from a vector store."""
+
+    id: str
+    object: str = Field(default="vector_store.file.deleted")
+    deleted: bool = True
+
+
 class FileListResponse(BaseModel):
     """Paginated list of files in a vector store (OpenAI format)."""
 

@@ -27,7 +27,7 @@ from maia_vectordb.db.engine import get_db_session, get_session_factory
 from maia_vectordb.models.file import File, FileStatus
 from maia_vectordb.models.file_chunk import FileChunk
 from maia_vectordb.models.vector_store import VectorStore
-from maia_vectordb.schemas.file import FileUploadResponse
+from maia_vectordb.schemas.file import DeleteFileResponse, FileUploadResponse
 from maia_vectordb.services.chunking import split_text
 from maia_vectordb.services.embedding import embed_texts
 
@@ -212,12 +212,12 @@ async def get_file(
     return FileUploadResponse.from_orm_model(file_obj, chunk_count=chunk_count)
 
 
-@router.delete("/{file_id}")
+@router.delete("/{file_id}", response_model=DeleteFileResponse)
 async def delete_file(
     vector_store_id: uuid.UUID,
     file_id: uuid.UUID,
     session: DBSession,
-) -> dict[str, Any]:
+) -> DeleteFileResponse:
     """Delete a file and its chunks from a vector store."""
     await _validate_vector_store(session, vector_store_id)
 
@@ -228,8 +228,4 @@ async def delete_file(
     await session.delete(file_obj)  # CASCADE deletes chunks
     await session.commit()
 
-    return {
-        "id": str(file_id),
-        "object": "vector_store.file.deleted",
-        "deleted": True,
-    }
+    return DeleteFileResponse(id=str(file_id))

@@ -6,11 +6,12 @@ Create Date: 2026-02-23 01:50:00.000000
 
 """
 
-import os
 from typing import Sequence, Union
 
 import pgvector.sqlalchemy.vector  # noqa: F401
 from alembic import op
+
+from maia_vectordb.core.config import settings
 
 # revision identifiers, used by Alembic.
 revision: str = "644a7ff8f7fc"
@@ -18,8 +19,7 @@ down_revision: Union[str, Sequence[str]] = "5e4cb5abbe73"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
-# Read dimension from env (matches Settings.embedding_dimension default)
-_NEW_DIM = int(os.environ.get("EMBEDDING_DIMENSION", "1536"))
+_NEW_DIM = settings.embedding_dimension
 _OLD_DIM = 1536
 
 

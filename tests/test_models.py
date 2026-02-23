@@ -5,6 +5,7 @@ from typing import Any
 
 from sqlalchemy import Table, inspect
 
+from maia_vectordb.core.config import settings
 from maia_vectordb.db.base import Base
 from maia_vectordb.models import (
     EMBEDDING_DIMENSION,
@@ -163,7 +164,7 @@ class TestFileChunkModel:
         col = FileChunk.__table__.c.embedding
         col_type: Any = col.type
         assert col_type.dim == EMBEDDING_DIMENSION
-        assert EMBEDDING_DIMENSION == 1536
+        assert EMBEDDING_DIMENSION == settings.embedding_dimension
 
     def test_hnsw_index_exists(self) -> None:
         table = _get_table(FileChunk)
