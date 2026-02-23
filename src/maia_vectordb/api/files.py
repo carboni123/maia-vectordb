@@ -210,3 +210,26 @@ async def get_file(
     chunk_count = len(result.all())
 
     return FileUploadResponse.from_orm_model(file_obj, chunk_count=chunk_count)
+
+
+@router.delete("/{file_id}")
+async def delete_file(
+    vector_store_id: uuid.UUID,
+    file_id: uuid.UUID,
+    session: DBSession,
+) -> dict[str, Any]:
+    """Delete a file and its chunks from a vector store."""
+    await _validate_vector_store(session, vector_store_id)
+
+    file_obj = await session.get(File, file_id)
+    if file_obj is None or file_obj.vector_store_id != vector_store_id:
+        raise NotFoundError("File not found")
+
+    await session.delete(file_obj)  # CASCADE deletes chunks
+    await session.commit()
+
+    return {
+        "id": str(file_id),
+        "object": "vector_store.file.deleted",
+        "deleted": True,
+    }

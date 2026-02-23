@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     )
     openai_api_key: str = ""
     embedding_model: str = "text-embedding-3-small"
+    embedding_dimension: int = 1536
     chunk_size: int = 800
     chunk_overlap: int = 200
     api_keys: list[str] = []

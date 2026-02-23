@@ -11,13 +11,14 @@ from sqlalchemy import DateTime, ForeignKey, Index, Integer, Text, func
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from maia_vectordb.core.config import settings
 from maia_vectordb.db.base import Base
 
 if TYPE_CHECKING:
     from maia_vectordb.models.file import File
     from maia_vectordb.models.vector_store import VectorStore
 
-EMBEDDING_DIMENSION = 1536
+EMBEDDING_DIMENSION = settings.embedding_dimension
 
 
 class FileChunk(Base):

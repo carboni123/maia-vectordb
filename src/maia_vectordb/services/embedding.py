@@ -78,7 +78,11 @@ async def _call_with_retry(
 
     for attempt in range(_MAX_RETRIES):
         try:
-            return await client.embeddings.create(input=texts, model=model)
+            return await client.embeddings.create(
+                input=texts,
+                model=model,
+                dimensions=settings.embedding_dimension,
+            )
         except openai.RateLimitError as exc:
             last_exc = exc
             logger.warning(

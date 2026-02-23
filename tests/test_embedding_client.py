@@ -120,7 +120,7 @@ class TestEmbedTextsEdgeCases:
             return response
 
         mock_client.embeddings.create = AsyncMock(
-            side_effect=lambda input, model: create_response(input)
+            side_effect=lambda input, model, **kwargs: create_response(input)
         )
         mock_get_client.return_value = mock_client
 

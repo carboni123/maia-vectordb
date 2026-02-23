@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import openai
@@ -135,6 +136,7 @@ class TestOpenAIEmbeddingProvider:
             *,
             input: list[str],
             model: str,  # noqa: A002
+            **kwargs: Any,
         ) -> openai.types.CreateEmbeddingResponse:
             return _make_response(input)
 
@@ -181,6 +183,7 @@ class TestOpenAIEmbeddingProvider:
             *,
             input: list[str],
             model: str,  # noqa: A002
+            **kwargs: Any,
         ) -> openai.types.CreateEmbeddingResponse:
             nonlocal calls
             calls += 1

@@ -72,7 +72,7 @@ class TestEmbedTexts:
 
         mock_client = MagicMock()
 
-        async def side_effect(*, input: list[str], model: str) -> Any:  # noqa: A002
+        async def side_effect(*, input: list[str], model: str, **kwargs: Any) -> Any:  # noqa: A002
             return _make_response(input)
 
         mock_client.embeddings.create = AsyncMock(side_effect=side_effect)
@@ -117,7 +117,7 @@ class TestRetryLogic:
 
         calls = 0
 
-        async def side_effect(*, input: list[str], model: str) -> Any:  # noqa: A002
+        async def side_effect(*, input: list[str], model: str, **kwargs: Any) -> Any:  # noqa: A002
             nonlocal calls
             calls += 1
             if calls == 1:
@@ -152,7 +152,7 @@ class TestRetryLogic:
 
         calls = 0
 
-        async def side_effect(*, input: list[str], model: str) -> Any:  # noqa: A002
+        async def side_effect(*, input: list[str], model: str, **kwargs: Any) -> Any:  # noqa: A002
             nonlocal calls
             calls += 1
             if calls == 1:
@@ -239,7 +239,7 @@ class TestRetryLogic:
 
         calls = 0
 
-        async def side_effect(*, input: list[str], model: str) -> Any:  # noqa: A002
+        async def side_effect(*, input: list[str], model: str, **kwargs: Any) -> Any:  # noqa: A002
             nonlocal calls
             calls += 1
             if calls <= 3:
@@ -270,7 +270,7 @@ class TestRetryLogic:
 
         calls = 0
 
-        async def side_effect(*, input: list[str], model: str) -> Any:  # noqa: A002
+        async def side_effect(*, input: list[str], model: str, **kwargs: Any) -> Any:  # noqa: A002
             nonlocal calls
             calls += 1
             if calls == 1:
@@ -298,7 +298,7 @@ class TestChunkAndEmbed:
         """Returns (chunk_text, embedding) tuples."""
         mock_client = MagicMock()
 
-        async def side_effect(*, input: list[str], model: str) -> Any:  # noqa: A002
+        async def side_effect(*, input: list[str], model: str, **kwargs: Any) -> Any:  # noqa: A002
             return _make_response(input)
 
         mock_client.embeddings.create = AsyncMock(side_effect=side_effect)

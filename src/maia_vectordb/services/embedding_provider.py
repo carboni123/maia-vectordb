@@ -120,7 +120,11 @@ class OpenAIEmbeddingProvider:
 
         for attempt in range(_MAX_RETRIES):
             try:
-                return client.embeddings.create(input=texts, model=model)
+                return client.embeddings.create(
+                    input=texts,
+                    model=model,
+                    dimensions=settings.embedding_dimension,
+                )
             except openai.RateLimitError as exc:
                 last_exc = exc
                 logger.warning(
