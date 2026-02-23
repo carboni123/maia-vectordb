@@ -19,10 +19,12 @@ class FileUploadResponse(BaseModel):
                     "id": "660e8400-e29b-41d4-a716-446655440001",
                     "object": "vector_store.file",
                     "vector_store_id": "550e8400-e29b-41d4-a716-446655440000",
-                    "filename": "document.txt",
+                    "filename": "report.pdf",
                     "status": "completed",
                     "bytes": 2048,
                     "chunk_count": 5,
+                    "content_type": "application/pdf",
+                    "attributes": {"department": "engineering"},
                     "purpose": "assistants",
                     "created_at": 1700000000,
                 }
@@ -37,6 +39,8 @@ class FileUploadResponse(BaseModel):
     status: str
     bytes: int = 0
     chunk_count: int = 0
+    content_type: str | None = None
+    attributes: dict[str, Any] | None = None
     purpose: str = "assistants"
     created_at: int
 
@@ -51,6 +55,13 @@ class FileUploadResponse(BaseModel):
         obj_purpose: str = getattr(obj, "purpose")
         obj_created_at: datetime = getattr(obj, "created_at")
 
+        raw_ct = getattr(obj, "content_type", None)
+        obj_content_type: str | None = raw_ct if isinstance(raw_ct, str) else None
+        raw_attrs = getattr(obj, "attributes", None)
+        obj_attributes: dict[str, Any] | None = (
+            raw_attrs if isinstance(raw_attrs, dict) else None
+        )
+
         return cls(
             id=str(obj_id),
             vector_store_id=str(obj_vs_id),
@@ -60,6 +71,8 @@ class FileUploadResponse(BaseModel):
             ),
             bytes=obj_bytes,
             chunk_count=chunk_count,
+            content_type=obj_content_type,
+            attributes=obj_attributes,
             purpose=obj_purpose,
             created_at=int(obj_created_at.timestamp()),
         )

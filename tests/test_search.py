@@ -26,6 +26,7 @@ def _make_search_row(
     content: str = "hello world",
     score: float = 0.95,
     chunk_metadata: dict[str, Any] | None = None,
+    file_attributes: dict[str, Any] | None = None,
 ) -> Any:
     """Create a mock database row from the search SQL query."""
     row = MagicMock()
@@ -35,6 +36,7 @@ def _make_search_row(
     row.content = content
     row.score = score
     row.chunk_metadata = chunk_metadata
+    row.file_attributes = file_attributes
     return row
 
 

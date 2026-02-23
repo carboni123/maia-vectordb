@@ -197,22 +197,46 @@ Upload a file or raw text to a vector store. The content is automatically chunke
 
 **Request Body (multipart/form-data):**
 
-**Option 1: File Upload**
+**Option 1: File Upload (text)**
 ```bash
 curl -X POST http://localhost:8000/v1/vector_stores/{id}/files \
   -F "file=@document.txt"
 ```
 
-**Option 2: Raw Text**
+**Option 2: File Upload (binary -- PDF or DOCX)**
 ```bash
 curl -X POST http://localhost:8000/v1/vector_stores/{id}/files \
-  -F "text=Your raw text content here"
+  -F "file=@report.pdf" \
+  -F 'attributes={"department":"engineering","priority":"high"}'
+```
+
+**Option 3: Raw Text**
+```bash
+curl -X POST http://localhost:8000/v1/vector_stores/{id}/files \
+  -F "text=Your raw text content here" \
+  -F "filename=my-notes.md"
 ```
 
 **Fields:**
-- `file` (file, optional): File to upload (.txt or .md)
+- `file` (file, optional): File to upload. Supported formats: `.txt`, `.md`, `.json`, `.html`, `.htm`, `.csv`, `.xml`, `.yaml`, `.yml`, `.pdf`, `.docx`
 - `text` (string, optional): Raw text content
+- `filename` (string, optional): Override the filename. When provided with `file`, overrides the uploaded filename. When provided with `text`, replaces the default `raw_text.txt`. The extension determines content type detection.
+- `attributes` (string, optional): JSON-encoded object of custom metadata to attach to the file. Must be a valid JSON object (not array or scalar). Example: `'{"department":"sales"}'`
 - Note: Must provide exactly one of `file` or `text`
+
+**Supported File Formats:**
+
+| Extension | Content Type | Extraction Method |
+|-----------|-------------|-------------------|
+| `.txt` | `text/plain` | UTF-8 decode |
+| `.md` | `text/markdown` | UTF-8 decode |
+| `.json` | `application/json` | UTF-8 decode |
+| `.html`, `.htm` | `text/html` | UTF-8 decode |
+| `.csv` | `text/csv` | UTF-8 decode |
+| `.xml` | `application/xml` | UTF-8 decode |
+| `.yaml`, `.yml` | `application/x-yaml` | UTF-8 decode |
+| `.pdf` | `application/pdf` | PyMuPDF text extraction |
+| `.docx` | `application/vnd.openxmlformats-officedocument.wordprocessingml.document` | python-docx paragraph extraction |
 
 **Response (Small File ≤50 KB):** `201 Created`
 ```json
@@ -220,10 +244,12 @@ curl -X POST http://localhost:8000/v1/vector_stores/{id}/files \
   "id": "660e8400-e29b-41d4-a716-446655440001",
   "object": "vector_store.file",
   "vector_store_id": "550e8400-e29b-41d4-a716-446655440000",
-  "filename": "document.txt",
+  "filename": "report.pdf",
   "status": "completed",
   "bytes": 1024,
   "chunk_count": 3,
+  "content_type": "application/pdf",
+  "attributes": {"department": "engineering"},
   "purpose": "assistants",
   "created_at": 1707868900
 }
@@ -235,22 +261,30 @@ curl -X POST http://localhost:8000/v1/vector_stores/{id}/files \
   "id": "660e8400-e29b-41d4-a716-446655440002",
   "object": "vector_store.file",
   "vector_store_id": "550e8400-e29b-41d4-a716-446655440000",
-  "filename": "large_document.txt",
+  "filename": "large_document.docx",
   "status": "in_progress",
   "bytes": 75000,
   "chunk_count": 0,
+  "content_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "attributes": null,
   "purpose": "assistants",
   "created_at": 1707868900
 }
 ```
 
+**New Response Fields:**
+- `content_type` (string|null): MIME type detected from the file extension. Null if the extension is not in the known mapping.
+- `attributes` (object|null): Custom metadata attached to the file at upload time. Null if not provided.
+
 **Processing Behavior:**
 - **≤50 KB**: Processed inline, returns `status: "completed"` with chunk count
 - **>50 KB**: Processed in background, returns `status: "in_progress"` (poll GET endpoint for completion)
+- **Binary files (PDF, DOCX)**: Text is extracted before chunking. Empty documents (no extractable text) return a `400` error.
 
 **Error Responses:**
 - `404 Not Found` - Vector store doesn't exist
-- `400 Bad Request` - Invalid file type or missing file/text
+- `400 Bad Request` - Unsupported file format, empty binary document, invalid attributes JSON, invalid UTF-8 text, or missing file/text
+- `413 Request Entity Too Large` - File exceeds configured `MAX_FILE_SIZE_BYTES` limit
 
 ---
 
@@ -268,10 +302,12 @@ Get the processing status and details of an uploaded file.
   "id": "660e8400-e29b-41d4-a716-446655440002",
   "object": "vector_store.file",
   "vector_store_id": "550e8400-e29b-41d4-a716-446655440000",
-  "filename": "large_document.txt",
+  "filename": "report.pdf",
   "status": "completed",
   "bytes": 75000,
   "chunk_count": 95,
+  "content_type": "application/pdf",
+  "attributes": {"department": "engineering"},
   "purpose": "assistants",
   "created_at": 1707868900
 }
@@ -323,25 +359,29 @@ Perform semantic similarity search over a vector store using cosine similarity.
   "data": [
     {
       "file_id": "660e8400-e29b-41d4-a716-446655440001",
-      "filename": "ml_guide.txt",
+      "filename": "ml_guide.pdf",
       "chunk_index": 0,
       "content": "Machine learning is a subset of artificial intelligence...",
       "score": 0.92,
       "metadata": {
         "category": "science",
         "lang": "en"
+      },
+      "file_attributes": {
+        "department": "research"
       }
     },
     {
       "file_id": "660e8400-e29b-41d4-a716-446655440002",
-      "filename": "ai_intro.txt",
+      "filename": "ai_intro.docx",
       "chunk_index": 2,
       "content": "Applications of ML include computer vision, NLP...",
       "score": 0.85,
       "metadata": {
         "category": "science",
         "lang": "en"
-      }
+      },
+      "file_attributes": null
     }
   ],
   "search_query": "What is machine learning?"
@@ -354,7 +394,8 @@ Perform semantic similarity search over a vector store using cosine similarity.
 - `chunk_index` (integer): Index of the chunk within the file
 - `content` (string): Text content of the chunk
 - `score` (float): Similarity score (0.0-1.0, higher is better)
-- `metadata` (object): Metadata associated with the chunk
+- `metadata` (object|null): Metadata associated with the chunk
+- `file_attributes` (object|null): Custom attributes attached to the file at upload time
 
 **Search Algorithm:**
 1. Query text is embedded using OpenAI's embedding API
@@ -385,11 +426,13 @@ All errors return a consistent JSON envelope:
 
 **Error Types:**
 - `http_error` (401) - Missing or invalid API key
+- `validation_error` (400) - Invalid request parameters (unsupported file format, invalid JSON, etc.)
 - `not_found` (404) - Resource not found
-- `bad_request` (400) - Invalid request parameters
+- `file_too_large` (413) - Uploaded file exceeds configured size limit
+- `rate_limit_exceeded` (429) - Request rate limit exceeded
 - `embedding_service_error` (502) - OpenAI embedding service unavailable
 - `database_error` (503) - Database operation failed
-- `internal_server_error` (500) - Unexpected server error
+- `api_error` (500) - Unexpected server error
 
 **Common HTTP Status Codes:**
 - `200 OK` - Request successful
@@ -397,6 +440,8 @@ All errors return a consistent JSON envelope:
 - `400 Bad Request` - Invalid request parameters
 - `401 Unauthorized` - Missing or invalid `X-API-Key` header
 - `404 Not Found` - Resource not found
+- `413 Request Entity Too Large` - File exceeds size limit
+- `429 Too Many Requests` - Rate limit exceeded
 - `500 Internal Server Error` - Unexpected server error
 - `502 Bad Gateway` - External service (OpenAI) unavailable
 - `503 Service Unavailable` - Database or service unavailable
@@ -456,11 +501,21 @@ response = requests.post(
 )
 store_id = response.json()["id"]
 
-# Upload file
+# Upload a text file
 with open("document.txt", "rb") as f:
     response = requests.post(
         f"{BASE_URL}/v1/vector_stores/{store_id}/files",
         files={"file": f},
+        headers=HEADERS,
+    )
+
+# Upload a PDF with custom attributes
+import json
+with open("report.pdf", "rb") as f:
+    response = requests.post(
+        f"{BASE_URL}/v1/vector_stores/{store_id}/files",
+        files={"file": f},
+        data={"attributes": json.dumps({"department": "engineering"})},
         headers=HEADERS,
     )
 

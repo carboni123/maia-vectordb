@@ -410,6 +410,8 @@ class TestJsonSerializationFormat:
             "status",
             "bytes",
             "chunk_count",
+            "content_type",
+            "attributes",
             "purpose",
             "created_at",
         }
@@ -448,6 +450,7 @@ class TestJsonSerializationFormat:
             "content",
             "score",
             "metadata",
+            "file_attributes",
         }
         assert set(r.keys()) == expected_result_keys
 

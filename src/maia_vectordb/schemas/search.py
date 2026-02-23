@@ -37,6 +37,7 @@ class SearchResult(BaseModel):
     content: str
     score: float
     metadata: dict[str, Any] | None = None
+    file_attributes: dict[str, Any] | None = None
 
     model_config = ConfigDict(
         from_attributes=True,
@@ -49,6 +50,7 @@ class SearchResult(BaseModel):
                     "content": "Authentication uses JWT tokens issued by...",
                     "score": 0.92,
                     "metadata": {"source": "docs"},
+                    "file_attributes": {"department": "engineering"},
                 }
             ]
         },

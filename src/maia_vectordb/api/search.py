@@ -92,6 +92,7 @@ async def search(
             fc.content,
             fc.metadata AS chunk_metadata,
             f.filename,
+            f.attributes AS file_attributes,
             (1 - (fc.embedding <=> :query_embedding)) AS score
         FROM file_chunks fc
         JOIN files f ON f.id = fc.file_id
@@ -113,6 +114,7 @@ async def search(
                 content=row.content,
                 score=round(float(row.score), 6),
                 metadata=row.chunk_metadata,
+                file_attributes=row.file_attributes,
             )
         )
 

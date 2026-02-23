@@ -56,6 +56,8 @@ _FILE_ATTRS = (
     "filename",
     "status",
     "bytes",
+    "content_type",
+    "attributes",
     "purpose",
     "created_at",
 )
@@ -87,6 +89,8 @@ def make_file(
     status: FileStatus = FileStatus.in_progress,
     byte_size: int = 100,
     file_id: uuid.UUID | None = None,
+    content_type: str | None = None,
+    attributes: dict[str, Any] | None = None,
 ) -> MagicMock:
     """Create a mock File ORM instance."""
     f = MagicMock()
@@ -95,6 +99,8 @@ def make_file(
     f.filename = filename
     f.status = status
     f.bytes = byte_size
+    f.content_type = content_type
+    f.attributes = attributes
     f.purpose = "assistants"
     f.created_at = datetime(2025, 1, 1, tzinfo=UTC)
     return f

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import uuid
 from typing import Annotated, Any
@@ -30,6 +31,11 @@ from maia_vectordb.models.vector_store import VectorStore
 from maia_vectordb.schemas.file import DeleteFileResponse, FileUploadResponse
 from maia_vectordb.services.chunking import split_text
 from maia_vectordb.services.embedding import embed_texts
+from maia_vectordb.services.extraction import (
+    detect_file_type,
+    extract_text,
+    is_binary_format,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +48,20 @@ DBSession = Annotated[AsyncSession, Depends(get_db_session)]
 
 # Threshold (bytes) above which processing runs in a background task.
 _BACKGROUND_THRESHOLD = 50_000
+
+_CONTENT_TYPE_MAP: dict[str, str] = {
+    ".txt": "text/plain",
+    ".md": "text/markdown",
+    ".json": "application/json",
+    ".html": "text/html",
+    ".htm": "text/html",
+    ".csv": "text/csv",
+    ".xml": "application/xml",
+    ".yaml": "application/x-yaml",
+    ".yml": "application/x-yaml",
+    ".pdf": "application/pdf",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+}
 
 
 async def _validate_vector_store(
@@ -112,17 +132,34 @@ async def _process_file_background(
 async def _read_upload_content(
     file: UploadFile | None,
     text: str | None,
-) -> tuple[str, str, int]:
-    """Extract (content, filename, byte_size) from upload or raw text."""
+    filename_override: str | None = None,
+) -> tuple[str, str, int, str | None]:
+    """Extract (content, filename, byte_size, content_type) from upload or raw text."""
     if file is not None:
         raw = await file.read()
-        content = raw.decode("utf-8")
-        filename = file.filename or "upload.txt"
-        return content, filename, len(raw)
+        fname = filename_override or file.filename or "upload.txt"
+        ext = detect_file_type(fname)
+        content_type = _CONTENT_TYPE_MAP.get(ext)
+
+        if is_binary_format(ext):
+            content = extract_text(raw, ext)
+        else:
+            try:
+                content = raw.decode("utf-8")
+            except UnicodeDecodeError as exc:
+                raise ValidationError(
+                    f"File '{fname}' is not valid UTF-8 text. "
+                    "For binary formats, use a supported extension (.pdf, .docx)."
+                ) from exc
+
+        return content, fname, len(raw), content_type
 
     if text is not None:
+        fname = filename_override or "raw_text.txt"
         encoded = text.encode("utf-8")
-        return text, "raw_text.txt", len(encoded)
+        ext = detect_file_type(fname)
+        content_type = _CONTENT_TYPE_MAP.get(ext)
+        return text, fname, len(encoded), content_type
 
     raise ValidationError("Provide either a file upload or a 'text' field.")
 
@@ -134,6 +171,8 @@ async def upload_file(
     background_tasks: BackgroundTasks,
     file: UploadFile | None = None,
     text: Annotated[str | None, Form()] = None,
+    filename: Annotated[str | None, Form()] = None,
+    attributes: Annotated[str | None, Form()] = None,
 ) -> Any:
     """Upload a file (or raw text) to a vector store.
 
@@ -143,8 +182,22 @@ async def upload_file(
     # 1. Validate vector store exists
     await _validate_vector_store(session, vector_store_id)
 
+    # 1a. Parse attributes JSON
+    parsed_attributes: dict[str, Any] | None = None
+    if attributes is not None:
+        try:
+            parsed_attributes = json.loads(attributes)
+        except (json.JSONDecodeError, ValueError) as exc:
+            raise ValidationError(
+                "Invalid JSON in 'attributes' field."
+            ) from exc
+        if not isinstance(parsed_attributes, dict):
+            raise ValidationError("'attributes' must be a JSON object.")
+
     # 2. Read content
-    content, filename, byte_size = await _read_upload_content(file, text)
+    content, resolved_filename, byte_size, content_type = await _read_upload_content(
+        file, text, filename
+    )
 
     # 2a. Enforce upload size limit
     if byte_size > settings.max_file_size_bytes:
@@ -156,9 +209,11 @@ async def upload_file(
     # 3. Create File record
     file_record = File(
         vector_store_id=vector_store_id,
-        filename=filename,
+        filename=resolved_filename,
         status=FileStatus.in_progress,
         bytes=byte_size,
+        content_type=content_type,
+        attributes=parsed_attributes,
     )
     session.add(file_record)
     await session.commit()

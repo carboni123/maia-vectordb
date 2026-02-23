@@ -19,6 +19,8 @@ dependencies = [
     "python-multipart>=0.0.6",
     "slowapi>=0.1.9",
     "prometheus-fastapi-instrumentator>=7.0.0",
+    "pymupdf>=1.25.0",
+    "python-docx>=1.1.0",
 ]
 
 [project.optional-dependencies]
@@ -57,6 +59,8 @@ module = [
     "pgvector.*",
     "tiktoken.*",
     "asyncpg.*",
+    "fitz.*",
+    "docx.*",
 ]
 ignore_missing_imports = true
 

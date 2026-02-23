@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import uuid
 from io import BytesIO
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -359,3 +360,177 @@ class TestGetFile:
 
         resp = client.get(f"/v1/vector_stores/{store.id}/files/{file_obj.id}")
         assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Binary file format + attributes tests
+# ---------------------------------------------------------------------------
+
+
+class TestUploadBinaryAndAttributes:
+    """Tests for PDF/DOCX upload, filename override, and attributes."""
+
+    @patch("maia_vectordb.api.files.extract_text", return_value="extracted pdf text")
+    @patch("maia_vectordb.api.files.embed_texts")
+    @patch("maia_vectordb.api.files.split_text")
+    def test_upload_pdf_file(
+        self,
+        mock_split: MagicMock,
+        mock_embed: MagicMock,
+        mock_extract: MagicMock,
+        client: TestClient,
+        mock_session: MagicMock,
+    ) -> None:
+        """PDF upload extracts text instead of crashing on UTF-8 decode."""
+        store_id = uuid.uuid4()
+        store = make_store(store_id=store_id)
+        file_mock = make_file(
+            vector_store_id=store_id,
+            filename="report.pdf",
+            status=FileStatus.completed,
+            content_type="application/pdf",
+        )
+
+        mock_session.get = AsyncMock(return_value=store)
+        mock_session.refresh = AsyncMock(
+            side_effect=make_refresh(file_mock, _FILE_ATTRS)
+        )
+
+        mock_split.return_value = ["extracted pdf text"]
+        mock_embed.return_value = [[0.1] * 1536]
+
+        # Binary content that would crash raw.decode("utf-8")
+        pdf_bytes = b"%PDF-1.4 binary content \x80\x81\x82"
+        resp = client.post(
+            f"/v1/vector_stores/{store_id}/files",
+            files={"file": ("report.pdf", BytesIO(pdf_bytes), "application/pdf")},
+        )
+
+        assert resp.status_code == 201
+        body = resp.json()
+        assert body["filename"] == "report.pdf"
+        assert body["content_type"] == "application/pdf"
+        mock_extract.assert_called_once_with(pdf_bytes, ".pdf")
+
+    @patch("maia_vectordb.api.files.embed_texts")
+    @patch("maia_vectordb.api.files.split_text")
+    def test_upload_raw_text_with_filename(
+        self,
+        mock_split: MagicMock,
+        mock_embed: MagicMock,
+        client: TestClient,
+        mock_session: MagicMock,
+    ) -> None:
+        """filename form field overrides the default 'raw_text.txt'."""
+        store_id = uuid.uuid4()
+        store = make_store(store_id=store_id)
+        file_mock = make_file(
+            vector_store_id=store_id,
+            filename="my-notes.md",
+            status=FileStatus.completed,
+            byte_size=9,
+            content_type="text/markdown",
+        )
+
+        mock_session.get = AsyncMock(return_value=store)
+        mock_session.refresh = AsyncMock(
+            side_effect=make_refresh(file_mock, _FILE_ATTRS)
+        )
+
+        mock_split.return_value = ["some text"]
+        mock_embed.return_value = [[0.1] * 1536]
+
+        resp = client.post(
+            f"/v1/vector_stores/{store_id}/files",
+            data={"text": "some text", "filename": "my-notes.md"},
+        )
+
+        assert resp.status_code == 201
+        body = resp.json()
+        assert body["filename"] == "my-notes.md"
+        assert body["content_type"] == "text/markdown"
+
+    @patch("maia_vectordb.api.files.embed_texts")
+    @patch("maia_vectordb.api.files.split_text")
+    def test_upload_with_attributes(
+        self,
+        mock_split: MagicMock,
+        mock_embed: MagicMock,
+        client: TestClient,
+        mock_session: MagicMock,
+    ) -> None:
+        """Attributes are stored and returned in the response."""
+        store_id = uuid.uuid4()
+        store = make_store(store_id=store_id)
+        attrs = {"department": "engineering", "priority": "high"}
+        file_mock = make_file(
+            vector_store_id=store_id,
+            filename="doc.txt",
+            status=FileStatus.completed,
+            attributes=attrs,
+        )
+
+        mock_session.get = AsyncMock(return_value=store)
+        mock_session.refresh = AsyncMock(
+            side_effect=make_refresh(file_mock, _FILE_ATTRS)
+        )
+
+        mock_split.return_value = ["text"]
+        mock_embed.return_value = [[0.1] * 1536]
+
+        resp = client.post(
+            f"/v1/vector_stores/{store_id}/files",
+            files={"file": ("doc.txt", BytesIO(b"text"), "text/plain")},
+            data={"attributes": json.dumps(attrs)},
+        )
+
+        assert resp.status_code == 201
+        body = resp.json()
+        assert body["attributes"] == attrs
+
+    def test_upload_unsupported_format_returns_400(
+        self, client: TestClient, mock_session: MagicMock
+    ) -> None:
+        """Unsupported format (.png) returns a clear 400 error."""
+        store = make_store()
+        mock_session.get = AsyncMock(return_value=store)
+
+        resp = client.post(
+            f"/v1/vector_stores/{store.id}/files",
+            files={"file": ("image.png", BytesIO(b"\x89PNG"), "image/png")},
+        )
+
+        assert resp.status_code == 400
+        assert "Unsupported file format" in resp.json()["error"]["message"]
+
+    def test_upload_invalid_attributes_json_returns_400(
+        self, client: TestClient, mock_session: MagicMock
+    ) -> None:
+        """Malformed JSON in attributes returns 400."""
+        store = make_store()
+        mock_session.get = AsyncMock(return_value=store)
+
+        resp = client.post(
+            f"/v1/vector_stores/{store.id}/files",
+            files={"file": ("doc.txt", BytesIO(b"text"), "text/plain")},
+            data={"attributes": "not-valid-json{"},
+        )
+
+        assert resp.status_code == 400
+        assert "Invalid JSON" in resp.json()["error"]["message"]
+
+    def test_upload_attributes_non_object_returns_400(
+        self, client: TestClient, mock_session: MagicMock
+    ) -> None:
+        """Attributes must be a JSON object, not an array or scalar."""
+        store = make_store()
+        mock_session.get = AsyncMock(return_value=store)
+
+        resp = client.post(
+            f"/v1/vector_stores/{store.id}/files",
+            files={"file": ("doc.txt", BytesIO(b"text"), "text/plain")},
+            data={"attributes": json.dumps([1, 2, 3])},
+        )
+
+        assert resp.status_code == 400
+        assert "must be a JSON object" in resp.json()["error"]["message"]

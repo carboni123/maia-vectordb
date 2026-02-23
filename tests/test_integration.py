@@ -75,6 +75,7 @@ class TestCreateUploadSearchFlow:
         search_row.content = "chunk one"
         search_row.score = 0.95
         search_row.chunk_metadata = None
+        search_row.file_attributes = None
 
         result_mock = MagicMock()
         result_mock.fetchall.return_value = [search_row]
