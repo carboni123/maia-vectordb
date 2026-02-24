@@ -68,8 +68,7 @@ _PG_HOST = "localhost"
 _PG_PORT = 5432
 _TEST_DB = "maia_vectors_test"
 _TEST_DSN = (
-    f"postgresql+asyncpg://{_PG_USER}:{_PG_PASSWORD}"
-    f"@{_PG_HOST}:{_PG_PORT}/{_TEST_DB}"
+    f"postgresql+asyncpg://{_PG_USER}:{_PG_PASSWORD}@{_PG_HOST}:{_PG_PORT}/{_TEST_DB}"
 )
 
 # ---------------------------------------------------------------------------
@@ -135,6 +134,7 @@ def _setup_tables(dsn: str) -> None:
 
 def _drop_tables(dsn: str) -> None:
     """Drop all tables (cleanup)."""
+
     async def _inner() -> None:
         engine = create_async_engine(dsn, echo=False)
         async with engine.begin() as conn:
@@ -257,17 +257,13 @@ class TestEndToEndRAGPipeline:
         # ---- 4. Verify both files completed ----
         for file_id in (txt_file_id, pdf_file_id):
             for attempt in range(30):
-                resp = await api.get(
-                    f"/v1/vector_stores/{store_id}/files/{file_id}"
-                )
+                resp = await api.get(f"/v1/vector_stores/{store_id}/files/{file_id}")
                 assert resp.status_code == 200
                 if resp.json()["status"] == "completed":
                     break
                 await asyncio.sleep(0.5)
             else:
-                pytest.fail(
-                    f"File {file_id} did not complete within 15 seconds"
-                )
+                pytest.fail(f"File {file_id} did not complete within 15 seconds")
             assert resp.json()["chunk_count"] >= 1
 
         # ---- 5. Search — verify results from both files ----

@@ -188,9 +188,7 @@ async def upload_file(
         try:
             parsed_attributes = json.loads(attributes)
         except (json.JSONDecodeError, ValueError) as exc:
-            raise ValidationError(
-                "Invalid JSON in 'attributes' field."
-            ) from exc
+            raise ValidationError("Invalid JSON in 'attributes' field.") from exc
         if not isinstance(parsed_attributes, dict):
             raise ValidationError("'attributes' must be a JSON object.")
 

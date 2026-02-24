@@ -57,8 +57,7 @@ def _extract_pdf(raw: bytes) -> str:
         doc = fitz.open(stream=raw, filetype="pdf")
     except Exception as exc:
         raise ValidationError(
-            "Failed to parse PDF file. The file may be corrupt or "
-            "password-protected."
+            "Failed to parse PDF file. The file may be corrupt or password-protected."
         ) from exc
 
     pages = []

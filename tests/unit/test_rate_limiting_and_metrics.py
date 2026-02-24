@@ -113,9 +113,7 @@ class TestMetricsEndpoint:
         response = client.get("/metrics")
         assert "http_request_duration_seconds" in response.text
 
-    def test_metrics_includes_http_requests_total(
-        self, client: TestClient
-    ) -> None:
+    def test_metrics_includes_http_requests_total(self, client: TestClient) -> None:
         """AC4: http_requests_total counter must be present."""
         client.get("/metrics")
         response = client.get("/metrics")
@@ -145,9 +143,7 @@ class TestRateLimitConfiguration:
         assert isinstance(current_settings.rate_limit_per_minute, int)
         assert current_settings.rate_limit_per_minute > 0
 
-    def test_rate_limit_reads_from_env(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_rate_limit_reads_from_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Settings must pick up RATE_LIMIT_PER_MINUTE from the environment."""
         monkeypatch.setenv("RATE_LIMIT_PER_MINUTE", "120")
 
