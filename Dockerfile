@@ -29,6 +29,12 @@ RUN uv sync --frozen --no-dev \
               .venv/lib/python3.12/site-packages/numpy/_core/include 2>/dev/null; \
        true
 
+# Pre-download tiktoken encoding data at build time so it's baked into the
+# image and never needs a network fetch at runtime.
+ENV TIKTOKEN_CACHE_DIR=/app/.tiktoken_cache
+RUN mkdir -p /app/.tiktoken_cache \
+    && .venv/bin/python -c "import tiktoken; tiktoken.encoding_for_model('gpt-4o')"
+
 # ---- runtime stage ----
 FROM python:3.12-slim AS runtime
 
@@ -38,14 +44,15 @@ WORKDIR /app
 RUN groupadd --gid 1000 appuser \
     && useradd --uid 1000 --gid appuser --shell /bin/bash --create-home appuser
 
-# Copy the virtual environment and source from builder (same /app prefix
-# so shebangs remain valid)
+# Copy the virtual environment, source, and tiktoken cache from builder
 COPY --from=builder /app/.venv /app/.venv
 COPY --from=builder /app/src /app/src
+COPY --from=builder /app/.tiktoken_cache /app/.tiktoken_cache
 
 # Ensure venv binaries are on PATH
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
+ENV TIKTOKEN_CACHE_DIR=/app/.tiktoken_cache
 
 # Switch to non-root user
 USER appuser

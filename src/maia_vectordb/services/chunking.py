@@ -2,12 +2,28 @@
 
 from __future__ import annotations
 
+import logging
+
 import tiktoken
 
 from maia_vectordb.core.config import settings
 
+logger = logging.getLogger(__name__)
+
 # Separators tried in order: double-newline (paragraph), single-newline, space, empty
 _SEPARATORS: list[str] = ["\n\n", "\n", " ", ""]
+
+# Module-level encoding cache — avoids re-downloading tiktoken data on every call
+_encoding: tiktoken.Encoding | None = None
+
+
+def get_encoding() -> tiktoken.Encoding:
+    """Return the cached tiktoken encoding (lazy singleton)."""
+    global _encoding  # noqa: PLW0603
+    if _encoding is None:
+        logger.info("Loading tiktoken encoding for gpt-4o")
+        _encoding = tiktoken.encoding_for_model("gpt-4o")
+    return _encoding
 
 
 def _token_length(text: str, encoding: tiktoken.Encoding) -> int:
@@ -46,7 +62,7 @@ def split_text(
     if chunk_overlap is None:
         chunk_overlap = settings.chunk_overlap
 
-    encoding = tiktoken.encoding_for_model("gpt-4o")
+    encoding = get_encoding()
     return _recursive_split(text, _SEPARATORS, chunk_size, chunk_overlap, encoding)
 
 

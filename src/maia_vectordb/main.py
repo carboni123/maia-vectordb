@@ -1,5 +1,6 @@
 """FastAPI application entry point."""
 
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -27,6 +28,7 @@ from maia_vectordb.core.middleware import (
 )
 from maia_vectordb.db.engine import dispose_engine, get_session_factory, init_engine
 from maia_vectordb.schemas.health import ComponentHealth, HealthResponse
+from maia_vectordb.services.chunking import get_encoding
 
 # Configure structured logging at import time
 setup_logging()
@@ -66,15 +68,45 @@ _limiter = Limiter(
 _instrumentator = Instrumentator()
 
 
+_logger = logging.getLogger(__name__)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    """Manage application startup and shutdown."""
+    """Manage application startup and shutdown.
+
+    Pre-warms all lazy-init resources (DB, tiktoken, OpenAI connectivity)
+    so the first real request is fast.
+    """
     if not settings.api_keys:
         raise ValueError(
             "API_KEYS must be configured before starting the server. "
             "Set the API_KEYS environment variable to a comma-separated list of keys."
         )
     await init_engine()
+
+    # Pre-warm tiktoken encoding so the first request doesn't download it
+    get_encoding()
+
+    # Verify OpenAI embedding API is reachable (non-blocking warmup).
+    # Short timeout so a slow/unreachable API doesn't block startup.
+    try:
+        import openai
+
+        client = openai.AsyncOpenAI(
+            api_key=settings.openai_api_key, timeout=5.0,
+        )
+        await client.embeddings.create(
+            input=["warmup"],
+            model=settings.embedding_model,
+            dimensions=settings.embedding_dimension,
+        )
+        _logger.info("Startup complete — OpenAI embedding API verified")
+    except Exception:
+        _logger.warning(
+            "OpenAI embedding API unreachable at startup — first request may be slow",
+        )
+
     yield
     await dispose_engine()
 
