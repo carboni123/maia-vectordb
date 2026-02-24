@@ -10,6 +10,7 @@ from typing import Sequence, Union
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy import inspect
 from sqlalchemy.dialects.postgresql import JSON
 
 # revision identifiers, used by Alembic.
@@ -20,11 +21,16 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column("files", sa.Column("content_type", sa.String(128), nullable=True))
-    op.add_column(
-        "files",
-        sa.Column("attributes", JSON(), nullable=True),
-    )
+    bind = op.get_bind()
+    columns = [c["name"] for c in inspect(bind).get_columns("files")]
+
+    if "content_type" not in columns:
+        op.add_column("files", sa.Column("content_type", sa.String(128), nullable=True))
+    if "attributes" not in columns:
+        op.add_column(
+            "files",
+            sa.Column("attributes", JSON(), nullable=True),
+        )
 
 
 def downgrade() -> None:
