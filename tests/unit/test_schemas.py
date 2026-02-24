@@ -18,7 +18,11 @@ from pydantic import BaseModel, ValidationError
 
 from maia_vectordb.models.file import FileStatus
 from maia_vectordb.models.vector_store import VectorStoreStatus
-from maia_vectordb.schemas.file import FileListResponse, FileUploadResponse
+from maia_vectordb.schemas.file import (
+    DeleteFileResponse,
+    FileListResponse,
+    FileUploadResponse,
+)
 from maia_vectordb.schemas.search import SearchRequest, SearchResponse, SearchResult
 from maia_vectordb.schemas.vector_store import (
     CreateVectorStoreRequest,
@@ -134,6 +138,11 @@ class TestObjectTypeDefaults:
             created_at=0,
         )
         assert resp.object == "vector_store.file"
+
+    def test_delete_file_response_object_default(self) -> None:
+        resp = DeleteFileResponse(id="f_1")
+        assert resp.object == "vector_store.file.deleted"
+        assert resp.deleted is True
 
     def test_file_list_response_object_default(self) -> None:
         resp = FileListResponse(data=[])
