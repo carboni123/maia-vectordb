@@ -134,7 +134,7 @@ class TestStartupDDL:
         await dispose_engine()
 
     @pytest.mark.asyncio
-    async def test_init_engine_falls_back_to_create_all_when_tables_missing(self) -> None:
+    async def test_init_engine_falls_back_to_create_all_no_tables(self) -> None:
         """When tables are missing, init_engine falls back to create_all."""
         mock_engine, mock_conn = _make_mock_engine(
             table_names=[],  # No tables exist
