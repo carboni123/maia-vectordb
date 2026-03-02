@@ -1,5 +1,6 @@
 """FastAPI application entry point."""
 
+import importlib.metadata
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -32,6 +33,8 @@ from maia_vectordb.services.chunking import get_encoding
 
 # Configure structured logging at import time
 setup_logging()
+
+_VERSION = importlib.metadata.version("maia-vectordb")
 
 # --- OpenAPI tag metadata ---
 TAG_METADATA = [
@@ -119,7 +122,7 @@ app = FastAPI(
         "uploading documents with automatic chunking and embedding, "
         "and performing similarity search."
     ),
-    version="0.1.0",
+    version=_VERSION,
     lifespan=lifespan,
     openapi_tags=TAG_METADATA,
 )
@@ -218,7 +221,7 @@ async def health() -> JSONResponse:
 
     body = HealthResponse(
         status=overall,
-        version="0.1.0",
+        version=_VERSION,
         database=db_health,
         openai_api_key_set=openai_key_set,
     )
