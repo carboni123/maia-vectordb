@@ -78,6 +78,7 @@ class TestBackgroundProcessing:
         mock_session.__aexit__ = AsyncMock(return_value=None)
         mock_session.get = AsyncMock(return_value=mock_file)
         mock_session.commit = AsyncMock()
+        mock_session.rollback = AsyncMock()
 
         mock_factory.return_value = MagicMock(return_value=mock_session)
 
@@ -86,6 +87,7 @@ class TestBackgroundProcessing:
 
         # Verify file marked as failed
         assert mock_file.status == FileStatus.failed
+        mock_session.rollback.assert_called_once()
         assert mock_session.commit.call_count == 1
 
     @patch("maia_vectordb.services.file_service.get_session_factory")
@@ -141,13 +143,15 @@ class TestBackgroundProcessing:
         mock_session.__aexit__ = AsyncMock(return_value=None)
         mock_session.get = AsyncMock(return_value=None)
         mock_session.commit = AsyncMock()
+        mock_session.rollback = AsyncMock()
 
         mock_factory.return_value = MagicMock(return_value=mock_session)
 
         # Execute - should not raise
         await process_file_background(file_id, store_id, test_text)
 
-        # Verify commit still happens even with missing file
+        # Verify rollback + commit still happens even with missing file
+        mock_session.rollback.assert_called_once()
         assert mock_session.commit.call_count == 1
 
     @patch("maia_vectordb.services.file_service.get_session_factory")

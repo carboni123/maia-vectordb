@@ -84,10 +84,16 @@ async def process_file_background(
             )
         except Exception:
             logger.exception("Background processing failed for file %s", file_id)
-            file_obj = await session.get(File, file_id)
-            if file_obj is not None:
-                file_obj.status = FileStatus.failed
-            await session.commit()
+            try:
+                await session.rollback()
+                file_obj = await session.get(File, file_id)
+                if file_obj is not None:
+                    file_obj.status = FileStatus.failed
+                await session.commit()
+            except Exception:
+                logger.exception(
+                    "Failed to mark file %s as failed", file_id
+                )
 
 
 async def get_file(
