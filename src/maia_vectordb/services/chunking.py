@@ -170,18 +170,3 @@ def _overlap_start(
         result.insert(0, piece)
         total += piece_len
     return result, total
-
-
-def read_file(path: str) -> str:
-    """Read a .txt or .md file and return its text content.
-
-    Raises
-    ------
-    ValueError
-        If the file extension is not supported.
-    """
-    if not (path.endswith(".txt") or path.endswith(".md")):
-        msg = f"Unsupported file type: {path!r}. Only .txt and .md."
-        raise ValueError(msg)
-    with open(path, encoding="utf-8") as fh:
-        return fh.read()

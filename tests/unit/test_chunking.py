@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import tiktoken
 
-from maia_vectordb.services.chunking import read_file, split_text
+from maia_vectordb.services.chunking import split_text
 
 
 def _count_tokens(text: str) -> int:
@@ -87,35 +85,6 @@ class TestChunkOverlap:
 
 
 # ---------------------------------------------------------------------------
-# AC 5: Supports .txt and .md file types
-# ---------------------------------------------------------------------------
-
-
-class TestReadFile:
-    """File reading supports .txt and .md files."""
-
-    def test_read_txt_file(self, tmp_path: Path) -> None:
-        f = tmp_path / "sample.txt"
-        f.write_text("Hello from txt", encoding="utf-8")
-        content = read_file(str(f))
-        assert content == "Hello from txt"
-
-    def test_read_md_file(self, tmp_path: Path) -> None:
-        f = tmp_path / "sample.md"
-        f.write_text("# Heading\nContent", encoding="utf-8")
-        content = read_file(str(f))
-        assert content == "# Heading\nContent"
-
-    def test_unsupported_file_raises(self, tmp_path: Path) -> None:
-        f = tmp_path / "sample.pdf"
-        f.write_text("fake pdf", encoding="utf-8")
-        try:
-            read_file(str(f))
-            raise AssertionError("Expected ValueError")
-        except ValueError as exc:
-            assert "Unsupported file type" in str(exc)
-
-
 class TestRecursiveSplitBehavior:
     """The recursive splitter uses paragraph and line separators."""
 
