@@ -18,6 +18,16 @@ class APIError(Exception):
         super().__init__(message)
 
 
+class AuthenticationError(APIError):
+    """Raised when API key authentication fails."""
+
+    status_code: int = 401
+    error_type: str = "authentication_error"
+
+    def __init__(self, message: str = "Invalid or missing API key") -> None:
+        super().__init__(message)
+
+
 class NotFoundError(APIError):
     """Raised when a requested resource does not exist."""
 
