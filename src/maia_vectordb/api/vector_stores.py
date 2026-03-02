@@ -5,10 +5,9 @@ from __future__ import annotations
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Query
 
-from maia_vectordb.db.engine import get_db_session
+from maia_vectordb.api.deps import DBSession
 from maia_vectordb.schemas.vector_store import (
     CreateVectorStoreRequest,
     DeleteVectorStoreResponse,
@@ -18,8 +17,6 @@ from maia_vectordb.schemas.vector_store import (
 from maia_vectordb.services import vector_store_service
 
 router = APIRouter(prefix="/v1/vector_stores", tags=["vector_stores"])
-
-DBSession = Annotated[AsyncSession, Depends(get_db_session)]
 
 
 @router.post("", status_code=201, response_model=VectorStoreResponse)

@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import logging
 import uuid
-from typing import Annotated, Any
+from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from maia_vectordb.db.engine import get_db_session
+from maia_vectordb.api.deps import DBSession
 from maia_vectordb.schemas.search import SearchRequest, SearchResponse, SearchResult
 from maia_vectordb.services import vector_store_service
 from maia_vectordb.services.embedding import embed_texts
@@ -21,8 +20,6 @@ router = APIRouter(
     prefix="/v1/vector_stores/{vector_store_id}",
     tags=["search"],
 )
-
-DBSession = Annotated[AsyncSession, Depends(get_db_session)]
 
 
 @router.post("/search", response_model=SearchResponse)

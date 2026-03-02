@@ -10,13 +10,12 @@ from typing import Annotated, Any
 from fastapi import (
     APIRouter,
     BackgroundTasks,
-    Depends,
     Form,
     UploadFile,
 )
 from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
+from maia_vectordb.api.deps import DBSession
 from maia_vectordb.core.config import settings
 from maia_vectordb.core.exceptions import (
     EmbeddingServiceError,
@@ -24,7 +23,7 @@ from maia_vectordb.core.exceptions import (
     NotFoundError,
     ValidationError,
 )
-from maia_vectordb.db.engine import get_db_session, get_session_factory
+from maia_vectordb.db.engine import get_session_factory
 from maia_vectordb.models.file import File, FileStatus
 from maia_vectordb.models.file_chunk import FileChunk
 from maia_vectordb.schemas.file import DeleteFileResponse, FileUploadResponse
@@ -43,8 +42,6 @@ router = APIRouter(
     prefix="/v1/vector_stores/{vector_store_id}/files",
     tags=["files"],
 )
-
-DBSession = Annotated[AsyncSession, Depends(get_db_session)]
 
 # Threshold (bytes) above which processing runs in a background task.
 _BACKGROUND_THRESHOLD = 50_000
