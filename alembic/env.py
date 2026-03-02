@@ -1,5 +1,4 @@
 import asyncio
-import os
 from logging.config import fileConfig
 
 from alembic import context
@@ -7,18 +6,15 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
+from maia_vectordb.core.config import settings
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
 
-# Always read DATABASE_URL from the environment so alembic.ini never needs
-# to be edited across environments. Falls back to the same default used by
-# the application (host.docker.internal for Docker Compose deployments).
-_db_url = os.environ.get(
-    "DATABASE_URL",
-    "postgresql+asyncpg://postgres:postgres@host.docker.internal:5432/maia_vectors",
-)
-config.set_main_option("sqlalchemy.url", _db_url)
+# Use the same DATABASE_URL that the application reads via pydantic-settings,
+# so alembic.ini never needs to be edited across environments.
+config.set_main_option("sqlalchemy.url", settings.database_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

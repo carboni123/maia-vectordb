@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     )
 
     database_url: str = (
-        "postgresql+asyncpg://postgres:postgres@host.docker.internal:5432/maia_vectors"
+        "postgresql+asyncpg://user:pass@localhost:5432/maia_vectors"
     )
     openai_api_key: str = ""
     embedding_model: str = "text-embedding-3-small"

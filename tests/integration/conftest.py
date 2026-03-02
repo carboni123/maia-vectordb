@@ -10,6 +10,7 @@ The test database ``maia_vectors_test`` is created/dropped automatically.
 from __future__ import annotations
 
 import asyncio
+import os
 from collections.abc import AsyncIterator
 from typing import Any
 from unittest.mock import patch
@@ -31,11 +32,11 @@ from maia_vectordb.services.embedding_provider import MockEmbeddingProvider
 # Configuration
 # ---------------------------------------------------------------------------
 
-_PG_USER = "postgres"
-_PG_PASSWORD = "postgres"
-_PG_HOST = "localhost"
-_PG_PORT = 5432
-_TEST_DB = "maia_vectors_test"
+_PG_USER = os.environ.get("PGUSER", "postgres")
+_PG_PASSWORD = os.environ.get("PGPASSWORD", "postgres")
+_PG_HOST = os.environ.get("PGHOST", "localhost")
+_PG_PORT = int(os.environ.get("PGPORT", "5432"))
+_TEST_DB = os.environ.get("TEST_DB_NAME", "maia_vectors_test")
 _ADMIN_DSN = f"postgresql://{_PG_USER}:{_PG_PASSWORD}@{_PG_HOST}:{_PG_PORT}/postgres"
 _TEST_DSN = (
     f"postgresql+asyncpg://{_PG_USER}:{_PG_PASSWORD}@{_PG_HOST}:{_PG_PORT}/{_TEST_DB}"
