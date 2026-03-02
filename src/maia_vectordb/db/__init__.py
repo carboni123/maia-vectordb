@@ -1,5 +1,7 @@
 """Database connection and session management."""
 
+from __future__ import annotations
+
 from maia_vectordb.db.base import Base
 from maia_vectordb.db.engine import (
     dispose_engine,

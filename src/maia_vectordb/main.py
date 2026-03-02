@@ -1,5 +1,7 @@
 """FastAPI application entry point."""
 
+from __future__ import annotations
+
 import importlib.metadata
 import logging
 from collections.abc import AsyncIterator

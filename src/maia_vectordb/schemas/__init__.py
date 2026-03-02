@@ -1,5 +1,7 @@
 """Pydantic request/response schemas."""
 
+from __future__ import annotations
+
 from maia_vectordb.schemas.file import (
     DeleteFileResponse,
     FileListResponse,

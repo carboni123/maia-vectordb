@@ -1,5 +1,7 @@
 """Pydantic schemas for similarity search API endpoints."""
 
+from __future__ import annotations
+
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
