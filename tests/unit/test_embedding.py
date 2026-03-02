@@ -12,7 +12,6 @@ from maia_vectordb.services.embedding import (
     _INITIAL_BACKOFF,
     _MAX_BATCH_SIZE,
     _MAX_RETRIES,
-    chunk_and_embed,
     embed_texts,
 )
 
@@ -283,35 +282,3 @@ class TestRetryLogic:
         result = await embed_texts(texts)
         assert len(result) == 1
         assert mock_sleep.call_count == 1
-
-
-# ---------------------------------------------------------------------------
-# chunk_and_embed integration (mocked embedding)
-# ---------------------------------------------------------------------------
-
-
-class TestChunkAndEmbed:
-    """chunk_and_embed splits text and embeds each chunk."""
-
-    @patch("maia_vectordb.services.embedding._get_client")
-    async def test_returns_tuples(self, mock_get_client: MagicMock) -> None:
-        """Returns (chunk_text, embedding) tuples."""
-        mock_client = MagicMock()
-
-        async def side_effect(*, input: list[str], model: str, **kwargs: Any) -> Any:  # noqa: A002
-            return _make_response(input)
-
-        mock_client.embeddings.create = AsyncMock(side_effect=side_effect)
-        mock_get_client.return_value = mock_client
-
-        result = await chunk_and_embed("Hello world", chunk_size=800, chunk_overlap=200)
-        assert len(result) == 1
-        text, vec = result[0]
-        assert text == "Hello world"
-        assert len(vec) == 1536
-
-    @patch("maia_vectordb.services.embedding._get_client")
-    async def test_empty_text(self, mock_get_client: MagicMock) -> None:
-        """Empty text returns empty list."""
-        result = await chunk_and_embed("", chunk_size=800, chunk_overlap=200)
-        assert result == []

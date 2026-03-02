@@ -9,7 +9,6 @@ from typing import Sequence
 import openai
 
 from maia_vectordb.core.config import settings
-from maia_vectordb.services.chunking import split_text
 
 logger = logging.getLogger(__name__)
 
@@ -118,36 +117,3 @@ async def _call_with_retry(
     # Exhausted retries
     assert last_exc is not None
     raise last_exc
-
-
-async def chunk_and_embed(
-    text: str,
-    *,
-    chunk_size: int | None = None,
-    chunk_overlap: int | None = None,
-    model: str | None = None,
-) -> list[tuple[str, list[float]]]:
-    """Split text into chunks and generate embeddings for each.
-
-    Parameters
-    ----------
-    text:
-        Full document text.
-    chunk_size:
-        Max tokens per chunk.
-    chunk_overlap:
-        Overlap tokens between consecutive chunks.
-    model:
-        Embedding model name.
-
-    Returns
-    -------
-    list[tuple[str, list[float]]]
-        ``(chunk_text, embedding_vector)`` pairs.
-    """
-    chunks = split_text(text, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
-    if not chunks:
-        return []
-
-    embeddings = await embed_texts(chunks, model=model)
-    return list(zip(chunks, embeddings, strict=True))
