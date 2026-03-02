@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import importlib.metadata
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from fastapi.testclient import TestClient
 
 from maia_vectordb.main import app
+
+_EXPECTED_VERSION = importlib.metadata.version("maia-vectordb")
 
 client = TestClient(app)
 
@@ -29,7 +32,7 @@ class TestHealthEndpoint:
         assert response.status_code == 200
         body = response.json()
         assert body["status"] == "ok"
-        assert body["version"] == "0.1.0"
+        assert body["version"] == _EXPECTED_VERSION
         assert body["database"]["status"] == "ok"
         assert "openai_api_key_set" in body
 
@@ -153,7 +156,7 @@ class TestOpenAPIDocs:
         schema = response.json()
         assert schema["info"]["title"] == "MAIA VectorDB"
         assert "pgvector" in schema["info"]["description"]
-        assert schema["info"]["version"] == "0.1.0"
+        assert schema["info"]["version"] == _EXPECTED_VERSION
 
     def test_openapi_tags_present(self) -> None:
         """OpenAPI schema includes tag descriptions for all groups."""
