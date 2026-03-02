@@ -29,7 +29,7 @@ from maia_vectordb.models.file import File, FileStatus
 from maia_vectordb.models.file_chunk import FileChunk
 from maia_vectordb.models.vector_store import VectorStore
 from maia_vectordb.schemas.file import DeleteFileResponse, FileUploadResponse
-from maia_vectordb.services.chunking import split_text
+from maia_vectordb.services.chunking import get_encoding, split_text
 from maia_vectordb.services.embedding import embed_texts
 from maia_vectordb.services.extraction import (
     detect_file_type,
@@ -93,7 +93,7 @@ async def _process_chunks(
             vector_store_id=vector_store_id,
             chunk_index=idx,
             content=chunk_text,
-            token_count=len(chunk_text.split()),
+            token_count=len(get_encoding().encode(chunk_text)),
             embedding=emb,
         )
         for idx, (chunk_text, emb) in enumerate(zip(chunks, embeddings, strict=True))
