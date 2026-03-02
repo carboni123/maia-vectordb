@@ -7,15 +7,15 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from maia_vectordb.api.files import _process_file_background
 from maia_vectordb.models.file import File, FileStatus
+from maia_vectordb.services.file_service import process_file_background
 
 
 class TestBackgroundProcessing:
     """Tests for background file processing."""
 
-    @patch("maia_vectordb.api.files.get_session_factory")
-    @patch("maia_vectordb.api.files._process_chunks")
+    @patch("maia_vectordb.services.file_service.get_session_factory")
+    @patch("maia_vectordb.services.file_service.process_chunks")
     async def test_background_success_updates_file_status(
         self,
         mock_process_chunks: MagicMock,
@@ -45,7 +45,7 @@ class TestBackgroundProcessing:
         mock_factory.return_value = MagicMock(return_value=mock_session)
 
         # Execute
-        await _process_file_background(file_id, store_id, test_text)
+        await process_file_background(file_id, store_id, test_text)
 
         # Verify
         mock_process_chunks.assert_called_once_with(test_text, file_id, store_id)
@@ -53,8 +53,8 @@ class TestBackgroundProcessing:
         assert mock_file.status == FileStatus.completed
         assert mock_session.commit.call_count == 1
 
-    @patch("maia_vectordb.api.files.get_session_factory")
-    @patch("maia_vectordb.api.files._process_chunks")
+    @patch("maia_vectordb.services.file_service.get_session_factory")
+    @patch("maia_vectordb.services.file_service.process_chunks")
     async def test_background_exception_marks_file_failed(
         self,
         mock_process_chunks: MagicMock,
@@ -82,14 +82,14 @@ class TestBackgroundProcessing:
         mock_factory.return_value = MagicMock(return_value=mock_session)
 
         # Execute - should not raise
-        await _process_file_background(file_id, store_id, test_text)
+        await process_file_background(file_id, store_id, test_text)
 
         # Verify file marked as failed
         assert mock_file.status == FileStatus.failed
         assert mock_session.commit.call_count == 1
 
-    @patch("maia_vectordb.api.files.get_session_factory")
-    @patch("maia_vectordb.api.files._process_chunks")
+    @patch("maia_vectordb.services.file_service.get_session_factory")
+    @patch("maia_vectordb.services.file_service.process_chunks")
     async def test_background_handles_missing_file(
         self,
         mock_process_chunks: MagicMock,
@@ -114,13 +114,13 @@ class TestBackgroundProcessing:
         mock_factory.return_value = MagicMock(return_value=mock_session)
 
         # Execute - should not raise
-        await _process_file_background(file_id, store_id, test_text)
+        await process_file_background(file_id, store_id, test_text)
 
         # Verify commits still happen
         assert mock_session.commit.call_count == 1
 
-    @patch("maia_vectordb.api.files.get_session_factory")
-    @patch("maia_vectordb.api.files._process_chunks")
+    @patch("maia_vectordb.services.file_service.get_session_factory")
+    @patch("maia_vectordb.services.file_service.process_chunks")
     async def test_background_exception_with_missing_file(
         self,
         mock_process_chunks: MagicMock,
@@ -145,13 +145,13 @@ class TestBackgroundProcessing:
         mock_factory.return_value = MagicMock(return_value=mock_session)
 
         # Execute - should not raise
-        await _process_file_background(file_id, store_id, test_text)
+        await process_file_background(file_id, store_id, test_text)
 
         # Verify commit still happens even with missing file
         assert mock_session.commit.call_count == 1
 
-    @patch("maia_vectordb.api.files.get_session_factory")
-    @patch("maia_vectordb.api.files._process_chunks")
+    @patch("maia_vectordb.services.file_service.get_session_factory")
+    @patch("maia_vectordb.services.file_service.process_chunks")
     async def test_background_empty_chunks_still_completes(
         self,
         mock_process_chunks: MagicMock,
@@ -180,7 +180,7 @@ class TestBackgroundProcessing:
         mock_factory.return_value = MagicMock(return_value=mock_session)
 
         # Execute
-        await _process_file_background(file_id, store_id, test_text)
+        await process_file_background(file_id, store_id, test_text)
 
         # Verify file marked as completed even with no chunks
         assert mock_file.status == FileStatus.completed

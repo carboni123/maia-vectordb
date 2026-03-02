@@ -13,23 +13,17 @@ from fastapi import (
     Form,
     UploadFile,
 )
-from sqlalchemy import func, select
 
 from maia_vectordb.api.deps import DBSession
 from maia_vectordb.core.config import settings
 from maia_vectordb.core.exceptions import (
     EmbeddingServiceError,
     FileTooLargeError,
-    NotFoundError,
     ValidationError,
 )
-from maia_vectordb.db.engine import get_session_factory
 from maia_vectordb.models.file import File, FileStatus
-from maia_vectordb.models.file_chunk import FileChunk
 from maia_vectordb.schemas.file import DeleteFileResponse, FileUploadResponse
-from maia_vectordb.services import vector_store_service
-from maia_vectordb.services.chunking import get_encoding, split_text
-from maia_vectordb.services.embedding import embed_texts
+from maia_vectordb.services import file_service, vector_store_service
 from maia_vectordb.services.extraction import (
     detect_file_type,
     extract_text,
@@ -43,78 +37,6 @@ router = APIRouter(
     tags=["files"],
 )
 
-# Threshold (bytes) above which processing runs in a background task.
-_BACKGROUND_THRESHOLD = 50_000
-
-_CONTENT_TYPE_MAP: dict[str, str] = {
-    ".txt": "text/plain",
-    ".md": "text/markdown",
-    ".json": "application/json",
-    ".html": "text/html",
-    ".htm": "text/html",
-    ".csv": "text/csv",
-    ".xml": "application/xml",
-    ".yaml": "application/x-yaml",
-    ".yml": "application/x-yaml",
-    ".pdf": "application/pdf",
-    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-}
-
-
-async def _process_chunks(
-    text: str,
-    file_id: uuid.UUID,
-    vector_store_id: uuid.UUID,
-) -> list[FileChunk]:
-    """Chunk text, embed, and return FileChunk ORM objects."""
-    chunks = split_text(text)
-    if not chunks:
-        return []
-
-    embeddings = await embed_texts(chunks)
-
-    return [
-        FileChunk(
-            id=uuid.uuid4(),
-            file_id=file_id,
-            vector_store_id=vector_store_id,
-            chunk_index=idx,
-            content=chunk_text,
-            token_count=len(get_encoding().encode(chunk_text)),
-            embedding=emb,
-        )
-        for idx, (chunk_text, emb) in enumerate(zip(chunks, embeddings, strict=True))
-    ]
-
-
-async def _process_file_background(
-    file_id: uuid.UUID,
-    vector_store_id: uuid.UUID,
-    text: str,
-) -> None:
-    """Background task: chunk, embed, and persist. Updates file status."""
-    factory = get_session_factory()
-    async with factory() as session:
-        try:
-            chunk_objs = await _process_chunks(text, file_id, vector_store_id)
-            session.add_all(chunk_objs)
-
-            file_obj = await session.get(File, file_id)
-            if file_obj is not None:
-                file_obj.status = FileStatus.completed
-            await session.commit()
-            logger.info(
-                "Background processing complete for file %s (%d chunks)",
-                file_id,
-                len(chunk_objs),
-            )
-        except Exception:
-            logger.exception("Background processing failed for file %s", file_id)
-            file_obj = await session.get(File, file_id)
-            if file_obj is not None:
-                file_obj.status = FileStatus.failed
-            await session.commit()
-
 
 async def _read_upload_content(
     file: UploadFile | None,
@@ -126,7 +48,7 @@ async def _read_upload_content(
         raw = await file.read()
         fname = filename_override or file.filename or "upload.txt"
         ext = detect_file_type(fname)
-        content_type = _CONTENT_TYPE_MAP.get(ext)
+        content_type = file_service.CONTENT_TYPE_MAP.get(ext)
 
         if is_binary_format(ext):
             content = extract_text(raw, ext)
@@ -145,7 +67,7 @@ async def _read_upload_content(
         fname = filename_override or "raw_text.txt"
         encoded = text.encode("utf-8")
         ext = detect_file_type(fname)
-        content_type = _CONTENT_TYPE_MAP.get(ext)
+        content_type = file_service.CONTENT_TYPE_MAP.get(ext)
         return text, fname, len(encoded), content_type
 
     raise ValidationError("Provide either a file upload or a 'text' field.")
@@ -205,9 +127,9 @@ async def upload_file(
     await session.refresh(file_record)
 
     # 4. Process: inline for small files, background for large ones
-    if byte_size > _BACKGROUND_THRESHOLD:
+    if byte_size > file_service.BACKGROUND_THRESHOLD:
         background_tasks.add_task(
-            _process_file_background,
+            file_service.process_file_background,
             file_record.id,
             vector_store_id,
             content,
@@ -216,7 +138,9 @@ async def upload_file(
 
     # Inline processing for small files
     try:
-        chunk_objs = await _process_chunks(content, file_record.id, vector_store_id)
+        chunk_objs = await file_service.process_chunks(
+            content, file_record.id, vector_store_id
+        )
         session.add_all(chunk_objs)
         file_record.status = FileStatus.completed
         await session.commit()
@@ -239,20 +163,9 @@ async def get_file(
 ) -> FileUploadResponse:
     """Retrieve a file's status (useful for polling background uploads)."""
     await vector_store_service.get_vector_store(session, vector_store_id)
-
-    file_obj = await session.get(File, file_id)
-    if file_obj is None or file_obj.vector_store_id != vector_store_id:
-        raise NotFoundError("File not found")
-
-    # Count chunks
-    stmt = (
-        select(func.count())
-        .select_from(FileChunk)
-        .where(FileChunk.file_id == file_id)
+    file_obj, chunk_count = await file_service.get_file(
+        session, file_id, vector_store_id
     )
-    result = await session.execute(stmt)
-    chunk_count = result.scalar_one()
-
     return FileUploadResponse.from_orm_model(file_obj, chunk_count=chunk_count)
 
 
@@ -264,12 +177,5 @@ async def delete_file(
 ) -> DeleteFileResponse:
     """Delete a file and its chunks from a vector store."""
     await vector_store_service.get_vector_store(session, vector_store_id)
-
-    file_obj = await session.get(File, file_id)
-    if file_obj is None or file_obj.vector_store_id != vector_store_id:
-        raise NotFoundError("File not found")
-
-    await session.delete(file_obj)  # CASCADE deletes chunks
-    await session.commit()
-
-    return DeleteFileResponse(id=str(file_id))
+    deleted_id = await file_service.delete_file(session, file_id, vector_store_id)
+    return DeleteFileResponse(id=deleted_id)

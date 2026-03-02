@@ -35,8 +35,8 @@ class TestUploadFile:
         assert resp.status_code == 404
         assert "Vector store not found" in resp.json()["error"]["message"]
 
-    @patch("maia_vectordb.api.files.embed_texts")
-    @patch("maia_vectordb.api.files.split_text")
+    @patch("maia_vectordb.services.file_service.embed_texts")
+    @patch("maia_vectordb.services.file_service.split_text")
     def test_upload_file_end_to_end(
         self,
         mock_split: MagicMock,
@@ -79,8 +79,8 @@ class TestUploadFile:
         # Verify session.add_all was called (bulk insert)
         mock_session.add_all.assert_called_once()
 
-    @patch("maia_vectordb.api.files.embed_texts")
-    @patch("maia_vectordb.api.files.split_text")
+    @patch("maia_vectordb.services.file_service.embed_texts")
+    @patch("maia_vectordb.services.file_service.split_text")
     def test_upload_raw_text(
         self,
         mock_split: MagicMock,
@@ -127,8 +127,8 @@ class TestUploadFile:
         assert resp.status_code == 400
         assert "Provide either" in resp.json()["error"]["message"]
 
-    @patch("maia_vectordb.api.files.embed_texts")
-    @patch("maia_vectordb.api.files.split_text")
+    @patch("maia_vectordb.services.file_service.embed_texts")
+    @patch("maia_vectordb.services.file_service.split_text")
     def test_upload_returns_response_shape(
         self,
         mock_split: MagicMock,
@@ -176,8 +176,8 @@ class TestUploadFile:
         assert isinstance(body["chunk_count"], int)
         assert body["status"] in ("completed", "in_progress", "failed")
 
-    @patch("maia_vectordb.api.files.embed_texts")
-    @patch("maia_vectordb.api.files.split_text")
+    @patch("maia_vectordb.services.file_service.embed_texts")
+    @patch("maia_vectordb.services.file_service.split_text")
     def test_bulk_insert_called_for_multiple_chunks(
         self,
         mock_split: MagicMock,
@@ -222,8 +222,8 @@ class TestUploadFile:
 class TestUploadLargeFileBackground:
     """Tests for background task processing of large files."""
 
-    @patch("maia_vectordb.api.files._process_file_background")
-    @patch("maia_vectordb.api.files._BACKGROUND_THRESHOLD", 10)
+    @patch("maia_vectordb.services.file_service.process_file_background")
+    @patch("maia_vectordb.services.file_service.BACKGROUND_THRESHOLD", 10)
     def test_large_file_returns_in_progress(
         self,
         mock_bg: MagicMock,
@@ -268,8 +268,8 @@ class TestUploadLargeFileBackground:
 class TestUploadProcessingFailure:
     """Tests for error handling during processing."""
 
-    @patch("maia_vectordb.api.files.embed_texts")
-    @patch("maia_vectordb.api.files.split_text")
+    @patch("maia_vectordb.services.file_service.embed_texts")
+    @patch("maia_vectordb.services.file_service.split_text")
     def test_processing_failure_returns_502(
         self,
         mock_split: MagicMock,
@@ -371,8 +371,8 @@ class TestUploadBinaryAndAttributes:
     """Tests for PDF/DOCX upload, filename override, and attributes."""
 
     @patch("maia_vectordb.api.files.extract_text", return_value="extracted pdf text")
-    @patch("maia_vectordb.api.files.embed_texts")
-    @patch("maia_vectordb.api.files.split_text")
+    @patch("maia_vectordb.services.file_service.embed_texts")
+    @patch("maia_vectordb.services.file_service.split_text")
     def test_upload_pdf_file(
         self,
         mock_split: MagicMock,
@@ -412,8 +412,8 @@ class TestUploadBinaryAndAttributes:
         assert body["content_type"] == "application/pdf"
         mock_extract.assert_called_once_with(pdf_bytes, ".pdf")
 
-    @patch("maia_vectordb.api.files.embed_texts")
-    @patch("maia_vectordb.api.files.split_text")
+    @patch("maia_vectordb.services.file_service.embed_texts")
+    @patch("maia_vectordb.services.file_service.split_text")
     def test_upload_raw_text_with_filename(
         self,
         mock_split: MagicMock,
@@ -450,8 +450,8 @@ class TestUploadBinaryAndAttributes:
         assert body["filename"] == "my-notes.md"
         assert body["content_type"] == "text/markdown"
 
-    @patch("maia_vectordb.api.files.embed_texts")
-    @patch("maia_vectordb.api.files.split_text")
+    @patch("maia_vectordb.services.file_service.embed_texts")
+    @patch("maia_vectordb.services.file_service.split_text")
     def test_upload_with_attributes(
         self,
         mock_split: MagicMock,

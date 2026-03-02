@@ -16,8 +16,8 @@ class TestCreateUploadSearchFlow:
     """End-to-end flow: create store → upload file → search."""
 
     @patch("maia_vectordb.api.search.embed_texts")
-    @patch("maia_vectordb.api.files.embed_texts")
-    @patch("maia_vectordb.api.files.split_text")
+    @patch("maia_vectordb.services.file_service.embed_texts")
+    @patch("maia_vectordb.services.file_service.split_text")
     def test_full_flow(
         self,
         mock_split: MagicMock,
@@ -94,8 +94,8 @@ class TestCreateUploadSearchFlow:
         assert search_body["data"][0]["score"] == 0.95
 
     @patch("maia_vectordb.api.search.embed_texts")
-    @patch("maia_vectordb.api.files.embed_texts")
-    @patch("maia_vectordb.api.files.split_text")
+    @patch("maia_vectordb.services.file_service.embed_texts")
+    @patch("maia_vectordb.services.file_service.split_text")
     def test_upload_then_get_file_status(
         self,
         mock_split: MagicMock,

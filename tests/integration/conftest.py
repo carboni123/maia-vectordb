@@ -148,7 +148,10 @@ async def integration_client(
     app.dependency_overrides[get_db_session] = _override_db
 
     with (
-        patch("maia_vectordb.api.files.embed_texts", side_effect=_mock_embed_texts),
+        patch(
+            "maia_vectordb.services.file_service.embed_texts",
+            side_effect=_mock_embed_texts,
+        ),
         patch("maia_vectordb.api.search.embed_texts", side_effect=_mock_embed_texts),
     ):
         transport = ASGITransport(app=app)
