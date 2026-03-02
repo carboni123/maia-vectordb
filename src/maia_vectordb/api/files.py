@@ -27,8 +27,8 @@ from maia_vectordb.core.exceptions import (
 from maia_vectordb.db.engine import get_db_session, get_session_factory
 from maia_vectordb.models.file import File, FileStatus
 from maia_vectordb.models.file_chunk import FileChunk
-from maia_vectordb.models.vector_store import VectorStore
 from maia_vectordb.schemas.file import DeleteFileResponse, FileUploadResponse
+from maia_vectordb.services import vector_store_service
 from maia_vectordb.services.chunking import get_encoding, split_text
 from maia_vectordb.services.embedding import embed_texts
 from maia_vectordb.services.extraction import (
@@ -62,16 +62,6 @@ _CONTENT_TYPE_MAP: dict[str, str] = {
     ".pdf": "application/pdf",
     ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 }
-
-
-async def _validate_vector_store(
-    session: AsyncSession, vector_store_id: uuid.UUID
-) -> VectorStore:
-    """Return the vector store or raise 404."""
-    store = await session.get(VectorStore, vector_store_id)
-    if store is None:
-        raise NotFoundError("Vector store not found")
-    return store
 
 
 async def _process_chunks(
@@ -180,7 +170,7 @@ async def upload_file(
     Large files (>50 KB) are processed in the background.
     """
     # 1. Validate vector store exists
-    await _validate_vector_store(session, vector_store_id)
+    await vector_store_service.get_vector_store(session, vector_store_id)
 
     # 1a. Parse attributes JSON
     parsed_attributes: dict[str, Any] | None = None
@@ -251,7 +241,7 @@ async def get_file(
     session: DBSession,
 ) -> FileUploadResponse:
     """Retrieve a file's status (useful for polling background uploads)."""
-    await _validate_vector_store(session, vector_store_id)
+    await vector_store_service.get_vector_store(session, vector_store_id)
 
     file_obj = await session.get(File, file_id)
     if file_obj is None or file_obj.vector_store_id != vector_store_id:
@@ -276,7 +266,7 @@ async def delete_file(
     session: DBSession,
 ) -> DeleteFileResponse:
     """Delete a file and its chunks from a vector store."""
-    await _validate_vector_store(session, vector_store_id)
+    await vector_store_service.get_vector_store(session, vector_store_id)
 
     file_obj = await session.get(File, file_id)
     if file_obj is None or file_obj.vector_store_id != vector_store_id:

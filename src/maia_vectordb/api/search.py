@@ -10,10 +10,9 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from maia_vectordb.core.exceptions import NotFoundError
 from maia_vectordb.db.engine import get_db_session
-from maia_vectordb.models.vector_store import VectorStore
 from maia_vectordb.schemas.search import SearchRequest, SearchResponse, SearchResult
+from maia_vectordb.services import vector_store_service
 from maia_vectordb.services.embedding import embed_texts
 
 logger = logging.getLogger(__name__)
@@ -24,16 +23,6 @@ router = APIRouter(
 )
 
 DBSession = Annotated[AsyncSession, Depends(get_db_session)]
-
-
-async def _validate_vector_store(
-    session: AsyncSession, vector_store_id: uuid.UUID
-) -> VectorStore:
-    """Return the vector store or raise 404."""
-    store = await session.get(VectorStore, vector_store_id)
-    if store is None:
-        raise NotFoundError("Vector store not found")
-    return store
 
 
 @router.post("/search", response_model=SearchResponse)
@@ -48,7 +37,7 @@ async def search(
     operator, applies optional metadata filters and score threshold, and
     returns top-k results ranked by similarity.
     """
-    await _validate_vector_store(session, vector_store_id)
+    await vector_store_service.get_vector_store(session, vector_store_id)
 
     # 1. Embed the query
     query_embedding = (await embed_texts([body.query]))[0]
