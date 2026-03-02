@@ -14,7 +14,7 @@ from fastapi import (
     Form,
     UploadFile,
 )
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from maia_vectordb.core.config import settings
@@ -258,9 +258,13 @@ async def get_file(
         raise NotFoundError("File not found")
 
     # Count chunks
-    stmt = select(FileChunk.id).where(FileChunk.file_id == file_id)
+    stmt = (
+        select(func.count())
+        .select_from(FileChunk)
+        .where(FileChunk.file_id == file_id)
+    )
     result = await session.execute(stmt)
-    chunk_count = len(result.all())
+    chunk_count = result.scalar_one()
 
     return FileUploadResponse.from_orm_model(file_obj, chunk_count=chunk_count)
 

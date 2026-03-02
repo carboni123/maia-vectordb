@@ -339,7 +339,7 @@ class TestGetFile:
         mock_session.get = AsyncMock(side_effect=[store, file_obj])
 
         result_mock = MagicMock()
-        result_mock.all.return_value = [("id1",), ("id2",), ("id3",)]
+        result_mock.scalar_one.return_value = 3
         mock_session.execute = AsyncMock(return_value=result_mock)
 
         resp = client.get(f"/v1/vector_stores/{store_id}/files/{file_obj.id}")
