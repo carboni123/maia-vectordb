@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class SearchRequest(BaseModel):
     """Request body for similarity search."""
 
-    query: str
+    query: str = Field(min_length=1)
     max_results: int = Field(default=10, ge=1, le=100)
     filter: dict[str, Any] | None = None
     score_threshold: float | None = Field(default=None, ge=0.0, le=1.0)

@@ -36,7 +36,7 @@ class FileCounts(BaseModel):
 class CreateVectorStoreRequest(BaseModel):
     """Request body for creating a vector store."""
 
-    name: str
+    name: str = Field(min_length=1)
     metadata: dict[str, Any] | None = None
     expires_after: dict[str, Any] | None = None
 
