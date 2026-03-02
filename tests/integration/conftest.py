@@ -26,7 +26,7 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from maia_vectordb.db.base import Base
-from maia_vectordb.services.embedding_provider import MockEmbeddingProvider
+from tests.helpers.mock_embedding import MockEmbeddingProvider
 
 # ---------------------------------------------------------------------------
 # Configuration
