@@ -5,7 +5,6 @@ from __future__ import annotations
 import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from maia_vectordb.api.files import _process_file_background
@@ -15,7 +14,6 @@ from maia_vectordb.models.file import File, FileStatus
 class TestBackgroundProcessing:
     """Tests for background file processing."""
 
-    @pytest.mark.asyncio
     @patch("maia_vectordb.api.files.get_session_factory")
     @patch("maia_vectordb.api.files._process_chunks")
     async def test_background_success_updates_file_status(
@@ -55,7 +53,6 @@ class TestBackgroundProcessing:
         assert mock_file.status == FileStatus.completed
         assert mock_session.commit.call_count == 1
 
-    @pytest.mark.asyncio
     @patch("maia_vectordb.api.files.get_session_factory")
     @patch("maia_vectordb.api.files._process_chunks")
     async def test_background_exception_marks_file_failed(
@@ -91,7 +88,6 @@ class TestBackgroundProcessing:
         assert mock_file.status == FileStatus.failed
         assert mock_session.commit.call_count == 1
 
-    @pytest.mark.asyncio
     @patch("maia_vectordb.api.files.get_session_factory")
     @patch("maia_vectordb.api.files._process_chunks")
     async def test_background_handles_missing_file(
@@ -123,7 +119,6 @@ class TestBackgroundProcessing:
         # Verify commits still happen
         assert mock_session.commit.call_count == 1
 
-    @pytest.mark.asyncio
     @patch("maia_vectordb.api.files.get_session_factory")
     @patch("maia_vectordb.api.files._process_chunks")
     async def test_background_exception_with_missing_file(
@@ -155,7 +150,6 @@ class TestBackgroundProcessing:
         # Verify commit still happens even with missing file
         assert mock_session.commit.call_count == 1
 
-    @pytest.mark.asyncio
     @patch("maia_vectordb.api.files.get_session_factory")
     @patch("maia_vectordb.api.files._process_chunks")
     async def test_background_empty_chunks_still_completes(

@@ -96,7 +96,6 @@ def _make_mock_engine(table_names: list[str] | None = None):
 class TestStartupDDL:
     """AC1: pgvector extension enabled and schema verified on startup."""
 
-    @pytest.mark.asyncio
     async def test_init_engine_enables_pgvector_extension(self) -> None:
         """init_engine executes CREATE EXTENSION IF NOT EXISTS vector."""
         mock_engine, mock_conn = _make_mock_engine()
@@ -115,7 +114,6 @@ class TestStartupDDL:
 
         await dispose_engine()
 
-    @pytest.mark.asyncio
     async def test_init_engine_skips_create_all_when_tables_exist(self) -> None:
         """When all required tables exist, create_all is NOT called."""
         mock_engine, mock_conn = _make_mock_engine(
@@ -133,7 +131,6 @@ class TestStartupDDL:
 
         await dispose_engine()
 
-    @pytest.mark.asyncio
     async def test_init_engine_falls_back_to_create_all_no_tables(self) -> None:
         """When tables are missing, init_engine falls back to create_all."""
         mock_engine, mock_conn = _make_mock_engine(
@@ -155,7 +152,6 @@ class TestStartupDDL:
 class TestSessionFactory:
     """Session factory and dependency injection tests."""
 
-    @pytest.mark.asyncio
     async def test_get_db_session_raises_without_init(self) -> None:
         """get_db_session raises RuntimeError if engine not initialised."""
         # Ensure engine is not initialised

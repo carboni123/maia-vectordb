@@ -4,13 +4,10 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
-
 
 class TestApplicationLifespan:
     """Tests for FastAPI lifespan event handlers."""
 
-    @pytest.mark.asyncio
     @patch("openai.AsyncOpenAI")
     @patch("maia_vectordb.main.get_encoding")
     @patch("maia_vectordb.main.dispose_engine")
@@ -39,7 +36,6 @@ class TestApplicationLifespan:
 
         mock_dispose.assert_called_once()
 
-    @pytest.mark.asyncio
     @patch("openai.AsyncOpenAI")
     @patch("maia_vectordb.main.get_encoding")
     @patch("maia_vectordb.main.dispose_engine")
@@ -72,7 +68,6 @@ class TestApplicationLifespan:
 class TestDatabaseEngineLifecycle:
     """Tests for database engine initialization and disposal."""
 
-    @pytest.mark.asyncio
     async def test_dispose_engine_when_no_engine(self) -> None:
         """dispose_engine() handles case when engine is None."""
         from maia_vectordb.db.engine import dispose_engine

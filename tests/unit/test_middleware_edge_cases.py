@@ -12,7 +12,6 @@ from fastapi.responses import JSONResponse
 class TestRequestIDMiddleware:
     """Tests for RequestIDMiddleware exception handling."""
 
-    @pytest.mark.asyncio
     async def test_middleware_reraises_exceptions(self) -> None:
         """Middleware re-raises exceptions from call_next."""
         from maia_vectordb.core.middleware import RequestIDMiddleware
@@ -35,7 +34,6 @@ class TestRequestIDMiddleware:
         # Verify request_id was still set on state
         assert hasattr(mock_request.state, "request_id")
 
-    @pytest.mark.asyncio
     async def test_middleware_uses_provided_request_id(self) -> None:
         """Middleware uses X-Request-ID header if provided."""
         from maia_vectordb.core.middleware import RequestIDMiddleware
@@ -63,7 +61,6 @@ class TestRequestIDMiddleware:
         assert mock_request.state.request_id == provided_id
         assert response.headers["X-Request-ID"] == provided_id
 
-    @pytest.mark.asyncio
     async def test_middleware_exception_before_response(self) -> None:
         """Middleware handles exceptions that occur before getting response."""
         from maia_vectordb.core.middleware import RequestIDMiddleware
@@ -87,7 +84,6 @@ class TestRequestIDMiddleware:
 class TestExceptionHandlers:
     """Tests for global exception handlers."""
 
-    @pytest.mark.asyncio
     async def test_unhandled_exception_logs_error(self) -> None:
         """Unhandled exception handler logs the exception."""
         from maia_vectordb.core.handlers import unhandled_exception_handler
@@ -111,7 +107,6 @@ class TestExceptionHandlers:
             )
             assert "Internal server error" in body.decode()
 
-    @pytest.mark.asyncio
     async def test_unhandled_exception_no_stack_trace_leak(self) -> None:
         """Unhandled exception handler doesn't leak stack traces."""
         from maia_vectordb.core.handlers import unhandled_exception_handler
@@ -139,7 +134,6 @@ class TestExceptionHandlers:
 class TestRequestLoggingMiddleware:
     """Tests for request logging middleware edge cases."""
 
-    @pytest.mark.asyncio
     async def test_logging_middleware_records_successful_requests(self) -> None:
         """Request logging middleware logs successful requests."""
         from maia_vectordb.core.middleware import RequestLoggingMiddleware
