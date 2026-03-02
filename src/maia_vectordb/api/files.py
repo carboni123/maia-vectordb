@@ -160,7 +160,7 @@ async def upload_file(
     text: Annotated[str | None, Form()] = None,
     filename: Annotated[str | None, Form()] = None,
     attributes: Annotated[str | None, Form()] = None,
-) -> Any:
+) -> FileUploadResponse:
     """Upload a file (or raw text) to a vector store.
 
     The file is chunked, embedded, and stored as searchable vectors.

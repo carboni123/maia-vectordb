@@ -27,7 +27,7 @@ async def search(
     vector_store_id: uuid.UUID,
     body: SearchRequest,
     session: DBSession,
-) -> Any:
+) -> SearchResponse:
     """Perform cosine similarity search over a vector store.
 
     Embeds the query string on-the-fly, searches using pgvector ``<=>``
