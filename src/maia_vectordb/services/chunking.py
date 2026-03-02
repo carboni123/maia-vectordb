@@ -167,6 +167,7 @@ def _overlap_start(
         piece_len = _token_length(piece, encoding)
         if total + piece_len > overlap_tokens:
             break
-        result.insert(0, piece)
+        result.append(piece)
         total += piece_len
+    result.reverse()
     return result, total
