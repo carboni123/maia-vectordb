@@ -17,6 +17,9 @@ from starlette.responses import Response
 logger = logging.getLogger(__name__)
 
 _REQUEST_ID_HEADER = "X-Request-ID"
+_MAX_REQUEST_ID_LENGTH = 128
+# Strip control characters and non-printable bytes from client-supplied IDs
+_SAFE_CHARS = set(range(0x20, 0x7F))  # printable ASCII
 
 
 class RequestIDMiddleware(BaseHTTPMiddleware):
@@ -31,7 +34,16 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
-        request_id = request.headers.get(_REQUEST_ID_HEADER) or str(uuid.uuid4())
+        raw_id = request.headers.get(_REQUEST_ID_HEADER)
+        if raw_id:
+            # Sanitize: keep printable ASCII only, truncate to max length
+            sanitized = "".join(
+                c for c in raw_id[:_MAX_REQUEST_ID_LENGTH]
+                if ord(c) in _SAFE_CHARS
+            )
+            request_id = sanitized or str(uuid.uuid4())
+        else:
+            request_id = str(uuid.uuid4())
         request.state.request_id = request_id
 
         try:
