@@ -22,9 +22,15 @@ _BACKOFF_FACTOR = 2.0
 _RETRYABLE_STATUS_CODES = {500, 502, 503, 504}
 
 
+_client: openai.AsyncOpenAI | None = None
+
+
 def _get_client() -> openai.AsyncOpenAI:
-    """Build an async OpenAI client from settings."""
-    return openai.AsyncOpenAI(api_key=settings.openai_api_key)
+    """Return a lazily-initialised singleton AsyncOpenAI client."""
+    global _client  # noqa: PLW0603
+    if _client is None:
+        _client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
+    return _client
 
 
 async def embed_texts(

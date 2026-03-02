@@ -11,8 +11,10 @@ class TestEmbeddingClientCreation:
     @patch("maia_vectordb.services.embedding.settings")
     def test_get_client_creates_openai_client(self, mock_settings: MagicMock) -> None:
         """_get_client creates AsyncOpenAI client with correct API key."""
+        import maia_vectordb.services.embedding as _mod
         from maia_vectordb.services.embedding import _get_client
 
+        _mod._client = None  # reset singleton
         mock_settings.openai_api_key = "test-api-key-123"
 
         _patch = "maia_vectordb.services.embedding.openai.AsyncOpenAI"
@@ -25,12 +27,15 @@ class TestEmbeddingClientCreation:
             # Verify client created with correct key
             mock_openai.assert_called_once_with(api_key="test-api-key-123")
             assert result == mock_client
+        _mod._client = None  # cleanup
 
     @patch("maia_vectordb.services.embedding.settings")
     def test_get_client_uses_settings_api_key(self, mock_settings: MagicMock) -> None:
         """_get_client uses API key from settings."""
+        import maia_vectordb.services.embedding as _mod
         from maia_vectordb.services.embedding import _get_client
 
+        _mod._client = None  # reset singleton
         test_key = "sk-test-key-from-settings"
         mock_settings.openai_api_key = test_key
 
@@ -41,6 +46,7 @@ class TestEmbeddingClientCreation:
             # Verify the key from settings was used
             call_kwargs = mock_openai.call_args.kwargs
             assert call_kwargs["api_key"] == test_key
+        _mod._client = None  # cleanup
 
 
 class TestEmbedTextsEdgeCases:
