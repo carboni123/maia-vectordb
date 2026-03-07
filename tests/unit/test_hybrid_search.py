@@ -1,7 +1,8 @@
 """Tests for the hybrid search service.
 
-Pipeline under test (matches OpenClaw's approach):
-  Vector (4×N) + Text (4×N) → Merge → Threshold (pre-decay) → Temporal Decay → MMR → Top N
+Pipeline under test:
+  Vector (4×N) + Text (4×N) → Merge → Normalize → Fuse
+  → Threshold (pre-decay) → MMR (on relevance) → Temporal Decay → Top N
 """
 
 from __future__ import annotations
@@ -27,7 +28,9 @@ from maia_vectordb.services.hybrid_search import (
 from tests.conftest import make_store
 
 _EMBEDDING_DIM = 1536
-_NOW = datetime(2026, 3, 6, tzinfo=timezone.utc)
+# Use a live "now" so tests don't rot. Individual tests that need exact
+# temporal multiplier values patch datetime.now instead.
+_NOW = datetime.now(timezone.utc)
 
 
 # ---------------------------------------------------------------------------
@@ -171,16 +174,16 @@ class TestMMRRerank:
     def test_returns_k_results(self) -> None:
         cs = [_candidate(content=f"doc {i} unique{i}") for i in range(10)]
         for i, c in enumerate(cs):
-            c.combined_score = 1.0 - i * 0.1
-        result = _mmr_rerank(cs, "doc", mmr_lambda=0.7, k=5)
+            c.relevance_score = 1.0 - i * 0.1
+        result = _mmr_rerank(cs, mmr_lambda=0.7, k=5)
         assert len(result) == 5
 
     def test_respects_relevance_with_lambda_1(self) -> None:
-        """With lambda=1 (pure relevance), order is by combined_score."""
+        """With lambda=1 (pure relevance), order is by relevance_score."""
         cs = [_candidate(content="low"), _candidate(content="high")]
-        cs[0].combined_score = 0.3
-        cs[1].combined_score = 0.9
-        result = _mmr_rerank(cs, "test", mmr_lambda=1.0, k=2)
+        cs[0].relevance_score = 0.3
+        cs[1].relevance_score = 0.9
+        result = _mmr_rerank(cs, mmr_lambda=1.0, k=2)
         assert result[0].content == "high"
         assert result[1].content == "low"
 
@@ -191,23 +194,23 @@ class TestMMRRerank:
             _candidate(content="the quick brown fox leaps"),  # near-duplicate
             _candidate(content="database schema migration guide"),  # diverse
         ]
-        cs[0].combined_score = 1.0
-        cs[1].combined_score = 0.95
-        cs[2].combined_score = 0.5
+        cs[0].relevance_score = 1.0
+        cs[1].relevance_score = 0.95
+        cs[2].relevance_score = 0.5
 
-        result = _mmr_rerank(cs, "fox", mmr_lambda=0.3, k=3)
+        result = _mmr_rerank(cs, mmr_lambda=0.3, k=3)
         assert result[0].content == "the quick brown fox jumps"
         # Diverse doc should be picked before the near-duplicate
         assert result[1].content == "database schema migration guide"
 
     def test_fewer_candidates_than_k(self) -> None:
         cs = [_candidate(content="only")]
-        cs[0].combined_score = 0.9
-        result = _mmr_rerank(cs, "test", mmr_lambda=0.7, k=5)
+        cs[0].relevance_score = 0.9
+        result = _mmr_rerank(cs, mmr_lambda=0.7, k=5)
         assert len(result) == 1
 
     def test_empty_candidates(self) -> None:
-        assert _mmr_rerank([], "test", mmr_lambda=0.7, k=5) == []
+        assert _mmr_rerank([], mmr_lambda=0.7, k=5) == []
 
 
 # ---------------------------------------------------------------------------
@@ -334,6 +337,65 @@ class TestHybridSearch:
             assert r.score_details is not None
 
     @pytest.mark.asyncio
+    async def test_vector_only_relevance_reaches_one(self) -> None:
+        """When text search returns nothing, the best vector match should
+        get relevance 1.0 (weights redistribute to the active signal)."""
+        session = MagicMock()
+
+        vector_result = MagicMock()
+        vector_result.fetchall.return_value = [
+            _make_vector_row(content="perfect", vector_score=0.95),
+        ]
+        empty_stats = MagicMock()
+        empty_stats.fetchall.return_value = []
+        session.execute = AsyncMock(side_effect=[vector_result, empty_stats])
+
+        results = await hybrid_search(
+            session=session,
+            vector_store_id=uuid.uuid4(),
+            query_text="the",  # likely all stop words
+            query_embedding=[0.1] * _EMBEDDING_DIM,
+            max_results=10,
+            score_threshold=0.9,
+        )
+
+        # Without adaptive weights this would be capped at 0.7 and filtered out
+        assert len(results) == 1
+        assert results[0].score_details is not None
+        assert results[0].score_details.vector == pytest.approx(1.0)
+
+    @pytest.mark.asyncio
+    async def test_text_only_relevance_reaches_one(self) -> None:
+        """When vector search returns nothing, the best text match should
+        get relevance 1.0 (weights redistribute to the active signal)."""
+        session = MagicMock()
+
+        vector_result = MagicMock()
+        vector_result.fetchall.return_value = []
+        stats_result = _make_stats_result("test")
+        text_result = MagicMock()
+        text_result.fetchall.return_value = [
+            _make_text_row(content="test match", doc_tsvector="'test':1"),
+        ]
+        session.execute = AsyncMock(
+            side_effect=[vector_result, stats_result, text_result],
+        )
+
+        results = await hybrid_search(
+            session=session,
+            vector_store_id=uuid.uuid4(),
+            query_text="test",
+            query_embedding=[0.1] * _EMBEDDING_DIM,
+            max_results=10,
+            score_threshold=0.9,
+        )
+
+        # Without adaptive weights this would be capped at 0.3 and filtered out
+        assert len(results) == 1
+        assert results[0].score_details is not None
+        assert results[0].score_details.text == pytest.approx(1.0)
+
+    @pytest.mark.asyncio
     async def test_score_threshold_filters_on_pre_decay_relevance(self) -> None:
         """score_threshold applies to pre-decay relevance, not post-decay score.
 
@@ -410,8 +472,15 @@ class TestHybridSearch:
         assert by_content["recent"].score > by_content["old"].score
 
     @pytest.mark.asyncio
-    async def test_half_life_multiplier_correct(self) -> None:
+    @patch("maia_vectordb.services.hybrid_search.datetime")
+    async def test_half_life_multiplier_correct(
+        self, mock_dt: MagicMock,
+    ) -> None:
         """At exactly half_life_days, score should be ~50% of a fresh doc."""
+        fixed_now = datetime(2026, 6, 1, tzinfo=timezone.utc)
+        mock_dt.now.return_value = fixed_now
+        mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+
         session = MagicMock()
         half_life = 30.0
 
@@ -419,7 +488,7 @@ class TestHybridSearch:
         vector_result.fetchall.return_value = [
             _make_vector_row(
                 content="aged", vector_score=0.9,
-                created_at=_NOW - timedelta(days=30),
+                created_at=fixed_now - timedelta(days=30),
             ),
         ]
         empty_stats = MagicMock()
@@ -437,7 +506,7 @@ class TestHybridSearch:
 
         assert len(results) == 1
         assert results[0].score_details is not None
-        assert results[0].score_details.temporal == pytest.approx(0.5, abs=0.02)
+        assert results[0].score_details.temporal == pytest.approx(0.5, abs=0.001)
 
     @pytest.mark.asyncio
     async def test_empty_results(self) -> None:

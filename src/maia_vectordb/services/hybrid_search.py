@@ -1,16 +1,17 @@
 """Hybrid search combining vector similarity, BM25 text ranking, and temporal decay.
 
-Pipeline (modeled after OpenClaw's battle-tested approach):
+Pipeline:
   Query → Vector Search (4×N) + BM25 Text Search (4×N)
-        → Merge by chunk ID (weighted fusion)
+        → Merge by chunk ID → Normalize → Weighted fusion
         → Filter by score_threshold (on pre-decay relevance)
-        → Temporal Decay (half-life multiplier)
-        → MMR Re-rank (Jaccard diversity)
+        → MMR Re-rank (Jaccard diversity, on relevance scores)
+        → Temporal Decay (half-life multiplier, on final selected set)
         → Return top N
 """
 
 from __future__ import annotations
 
+import logging
 import math
 import re
 import uuid
@@ -23,6 +24,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from maia_vectordb.schemas.search import ScoreDetails, SearchResult
 from maia_vectordb.services.bm25 import bm25_score, parse_tsvector
+
+logger = logging.getLogger(__name__)
 
 _CANDIDATE_MULTIPLIER = 4
 _WORD_RE = re.compile(r"\w+", re.UNICODE)
@@ -131,13 +134,31 @@ async def hybrid_search(
         filter_clauses, filter_params,
     )
 
+    logger.debug(
+        "Candidates retrieved: vector=%d, text=%d",
+        len(vector_candidates), len(text_candidates),
+    )
+
     # 2. Merge by chunk ID with weighted fusion
     merged = _merge_candidates(vector_candidates, text_candidates)
     if not merged:
+        logger.debug("No candidates after merge, returning empty")
         return []
 
     _min_max_normalize(merged, "vector_score")
     _min_max_normalize(merged, "text_score")
+
+    # Redistribute weight when one signal is entirely absent so that
+    # the active signal can reach 1.0 (avoids capping relevance at the
+    # weight of the active signal, e.g. max 0.7 when text returns nothing).
+    has_vector = any(c.vector_score != 0.0 for c in merged)
+    has_text = any(c.text_score != 0.0 for c in merged)
+    if not has_text:
+        logger.debug("No text signal — redistributing weight to vector")
+        vector_weight, text_weight = 1.0, 0.0
+    elif not has_vector:
+        logger.debug("No vector signal — redistributing weight to text")
+        vector_weight, text_weight = 0.0, 1.0
 
     for c in merged:
         c.relevance_score = (
@@ -147,21 +168,37 @@ async def hybrid_search(
 
     # 3. Filter by score_threshold on pre-decay relevance
     if score_threshold is not None:
+        before = len(merged)
         merged = [c for c in merged if c.relevance_score >= score_threshold]
+        logger.debug(
+            "Score threshold %.3f: %d → %d candidates",
+            score_threshold, before, len(merged),
+        )
 
     if not merged:
+        logger.debug("No candidates after threshold filter, returning empty")
         return []
 
-    # 4. Apply temporal decay as a multiplier (half-life model)
+    # 4. MMR re-ranking for diversity (operates on pure relevance scores
+    #    so that age does not distort the diversity/relevance trade-off)
+    selected = _mmr_rerank(merged, mmr_lambda, max_results)
+    logger.debug("MMR selected %d of %d candidates", len(selected), len(merged))
+
+    # 5. Apply temporal decay as a multiplier (half-life model)
+    #    Applied after MMR so diversity decisions are content-driven.
     decay_lambda = math.log(2) / half_life_days
     now = datetime.now(timezone.utc)
-    for c in merged:
+    for c in selected:
         age_days = max((now - c.created_at).total_seconds() / 86400.0, 0.0)
         c.temporal_multiplier = math.exp(-decay_lambda * age_days)
         c.combined_score = c.relevance_score * c.temporal_multiplier
 
-    # 5. MMR re-ranking for diversity (Jaccard-based)
-    selected = _mmr_rerank(merged, query_text, mmr_lambda, max_results)
+    if selected:
+        scores = [c.combined_score for c in selected]
+        logger.debug(
+            "Final %d results: score range [%.4f, %.4f]",
+            len(selected), min(scores), max(scores),
+        )
 
     return [
         SearchResult(
@@ -272,12 +309,15 @@ async def _text_candidates(
     if not stats["query_terms"]:
         return []  # query produced no terms after stemming (e.g. all stop words)
 
-    # Phase 2: Fetch matching candidates with tsvector for TF extraction
-    where = [
-        "fc.vector_store_id = :vector_store_id",
-        "to_tsvector('english', fc.content) @@ plainto_tsquery('english', :query_text)",
-        *extra_clauses,
-    ]
+    # Phase 2: Fetch matching candidates with tsvector for TF extraction.
+    # Uses a CTE so to_tsvector is computed once in SELECT and reused in
+    # the outer ORDER BY (the GIN index handles the WHERE @@ filter).
+    cte_extra = ""
+    if extra_clauses:
+        # Metadata filters reference fc_inner.metadata via the :filter_key params.
+        inner_clauses = [c.replace("fc.", "fc_inner.") for c in extra_clauses]
+        cte_extra = " AND " + " AND ".join(inner_clauses)
+
     params: dict[str, Any] = {
         "vector_store_id": vector_store_id,
         "query_text": query_text,
@@ -285,17 +325,26 @@ async def _text_candidates(
         **extra_params,
     }
     sql = text(f"""
+        WITH fc AS (
+            SELECT
+                fc_inner.*,
+                to_tsvector('english', fc_inner.content) AS tsv
+            FROM file_chunks fc_inner
+            WHERE fc_inner.vector_store_id = :vector_store_id
+              AND to_tsvector('english', fc_inner.content)
+                  @@ plainto_tsquery('english', :query_text)
+              {cte_extra}
+        )
         SELECT
             fc.id, fc.file_id, fc.chunk_index, fc.content,
             fc.metadata AS chunk_metadata, fc.created_at,
             fc.token_count,
-            to_tsvector('english', fc.content)::text AS doc_tsvector,
+            fc.tsv::text AS doc_tsvector,
             f.filename, f.attributes AS file_attributes
-        FROM file_chunks fc
+        FROM fc
         JOIN files f ON f.id = fc.file_id
-        WHERE {" AND ".join(where)}
         ORDER BY ts_rank_cd(
-            to_tsvector('english', fc.content),
+            fc.tsv,
             plainto_tsquery('english', :query_text)
         ) DESC
         LIMIT :limit
@@ -445,21 +494,22 @@ def _jaccard_similarity(a: set[str], b: set[str]) -> float:
 
 def _mmr_rerank(
     candidates: list[_Candidate],
-    query_text: str,
     mmr_lambda: float,
     k: int,
 ) -> list[_Candidate]:
     """Greedily select *k* results using Maximal Marginal Relevance.
 
-    MMR(d) = λ * combined_score(d)
+    MMR(d) = λ * relevance_score(d)
              - (1 - λ) * max(jaccard_sim(d, d_j) for d_j in selected)
 
     Uses Jaccard similarity on token sets (cheap, works without embeddings).
+    Operates on pre-decay ``relevance_score`` so that age does not distort
+    the diversity/relevance trade-off.
     """
     if not candidates:
         return []
 
-    remaining = sorted(candidates, key=lambda c: c.combined_score, reverse=True)
+    remaining = sorted(candidates, key=lambda c: c.relevance_score, reverse=True)
 
     # Fast path: pure relevance ranking (no diversity penalty)
     if mmr_lambda >= 1.0:
@@ -472,7 +522,7 @@ def _mmr_rerank(
         best_idx = 0
 
         for i, cand in enumerate(remaining):
-            relevance = cand.combined_score
+            relevance = cand.relevance_score
 
             # Diversity penalty: max Jaccard similarity to any selected doc
             max_sim = max(
