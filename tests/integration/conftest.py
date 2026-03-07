@@ -18,6 +18,7 @@ from unittest.mock import patch
 import asyncpg
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text as _sa_text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -103,6 +104,13 @@ async def test_engine() -> AsyncIterator[AsyncEngine]:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
+        # GIN index for full-text search (normally created by alembic migration)
+        await conn.execute(
+            _sa_text(
+                "CREATE INDEX IF NOT EXISTS ix_file_chunks_content_fts "
+                "ON file_chunks USING GIN (to_tsvector('english', content))"
+            )
+        )
 
     yield engine
 
@@ -138,6 +146,7 @@ async def integration_client(
     - Overrides DB session dependency to use the test database.
     - Patches ``embed_texts`` to use MockEmbeddingProvider (no OpenAI calls).
     """
+    from maia_vectordb.core.auth import verify_api_key
     from maia_vectordb.db.engine import get_db_session
     from maia_vectordb.main import app
 
@@ -146,6 +155,7 @@ async def integration_client(
             yield session
 
     app.dependency_overrides[get_db_session] = _override_db
+    app.dependency_overrides[verify_api_key] = lambda: "test-key"
 
     with (
         patch(
