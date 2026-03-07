@@ -448,8 +448,9 @@ class TestJsonSerializationFormat:
         resp = SearchResponse(data=[result], search_query="q")
         data = json.loads(resp.model_dump_json())
 
-        assert set(data.keys()) == {"object", "data", "search_query"}
+        assert set(data.keys()) == {"object", "data", "search_query", "search_mode"}
         assert data["object"] == "list"
+        assert data["search_mode"] == "vector"
         # Check nested result keys
         r = data["data"][0]
         expected_result_keys = {
@@ -460,6 +461,7 @@ class TestJsonSerializationFormat:
             "score",
             "metadata",
             "file_attributes",
+            "score_details",
         }
         assert set(r.keys()) == expected_result_keys
 
