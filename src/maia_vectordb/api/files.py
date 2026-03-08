@@ -17,6 +17,7 @@ from fastapi import (
 from maia_vectordb.api.deps import DBSession
 from maia_vectordb.core.config import settings
 from maia_vectordb.core.exceptions import (
+    APIError,
     EmbeddingServiceError,
     FileTooLargeError,
     ValidationError,
@@ -148,6 +149,11 @@ async def upload_file(
         return FileUploadResponse.from_orm_model(
             file_record, chunk_count=len(chunk_objs)
         )
+    except APIError:
+        # Re-raise known API errors (NotFound, Validation, etc.) as-is
+        file_record.status = FileStatus.failed
+        await session.commit()
+        raise
     except Exception:
         logger.exception("Failed to process file %s", file_record.id)
         file_record.status = FileStatus.failed
