@@ -18,11 +18,25 @@ _encoding: tiktoken.Encoding | None = None
 
 
 def get_encoding() -> tiktoken.Encoding:
-    """Return the cached tiktoken encoding (lazy singleton)."""
+    """Return the cached tiktoken encoding (lazy singleton).
+
+    Tries the configured embedding model first, falling back to
+    ``cl100k_base`` if tiktoken doesn't recognise the model name
+    (e.g. ``text-embedding-3-small``).
+    """
     global _encoding  # noqa: PLW0603
     if _encoding is None:
-        logger.info("Loading tiktoken encoding for gpt-4o")
-        _encoding = tiktoken.encoding_for_model("gpt-4o")
+        model = settings.embedding_model
+        try:
+            _encoding = tiktoken.encoding_for_model(model)
+            logger.info("Loaded tiktoken encoding for %s", model)
+        except KeyError:
+            _encoding = tiktoken.get_encoding("cl100k_base")
+            logger.info(
+                "Model %s not in tiktoken registry, "
+                "using cl100k_base encoding",
+                model,
+            )
     return _encoding
 
 
