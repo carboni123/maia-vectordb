@@ -25,7 +25,10 @@ def mock_session() -> MagicMock:
     session = MagicMock()
     session.commit = AsyncMock()
     session.refresh = AsyncMock()
-    session.execute = AsyncMock()
+    # Use an explicit MagicMock return_value so that callers of
+    # result.one(), result.fetchall(), etc. get plain MagicMock
+    # children — not coroutines from a nested AsyncMock.
+    session.execute = AsyncMock(return_value=MagicMock())
     session.get = AsyncMock()
     session.delete = AsyncMock()
     return session

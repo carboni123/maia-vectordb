@@ -30,7 +30,10 @@ async def create_vector_store(
         name=body.name,
         metadata=body.metadata,
     )
-    return VectorStoreResponse.from_orm_model(store)
+    counts = await vector_store_service.get_file_counts(
+        session, store.id,
+    )
+    return VectorStoreResponse.from_orm_model(store, file_counts=counts)
 
 
 @router.get("", response_model=VectorStoreListResponse)
@@ -48,7 +51,15 @@ async def list_vector_stores(
         order=order,
     )
 
-    data = [VectorStoreResponse.from_orm_model(s) for s in stores]
+    data = []
+    for s in stores:
+        counts = await vector_store_service.get_file_counts(
+            session, s.id,
+        )
+        data.append(
+            VectorStoreResponse.from_orm_model(s, file_counts=counts)
+        )
+
     return VectorStoreListResponse(
         data=data,
         first_id=data[0].id if data else None,
@@ -67,10 +78,15 @@ async def get_vector_store(
         session=session,
         store_id=vector_store_id,
     )
-    return VectorStoreResponse.from_orm_model(store)
+    counts = await vector_store_service.get_file_counts(
+        session, store.id,
+    )
+    return VectorStoreResponse.from_orm_model(store, file_counts=counts)
 
 
-@router.delete("/{vector_store_id}", response_model=DeleteVectorStoreResponse)
+@router.delete(
+    "/{vector_store_id}", response_model=DeleteVectorStoreResponse,
+)
 async def delete_vector_store(
     vector_store_id: UUID,
     session: DBSession,

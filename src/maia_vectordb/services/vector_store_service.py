@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from maia_vectordb.core.exceptions import NotFoundError
+from maia_vectordb.models.file import File, FileStatus
 from maia_vectordb.models.vector_store import VectorStore
+from maia_vectordb.schemas.vector_store import FileCounts
 
 
 async def create_vector_store(
@@ -137,3 +139,42 @@ async def delete_vector_store(
     await session.delete(store)
     await session.commit()
     return store_id_str
+
+
+async def get_file_counts(
+    session: AsyncSession,
+    store_id: UUID,
+) -> FileCounts:
+    """Compute file processing counts for a vector store.
+
+    Returns a ``FileCounts`` with in_progress, completed, cancelled,
+    failed, and total counts computed live from the ``files`` table.
+    """
+    stmt = (
+        select(
+            func.count().label("total"),
+            func.count()
+            .filter(File.status == FileStatus.in_progress)
+            .label("in_progress"),
+            func.count()
+            .filter(File.status == FileStatus.completed)
+            .label("completed"),
+            func.count()
+            .filter(File.status == FileStatus.cancelled)
+            .label("cancelled"),
+            func.count()
+            .filter(File.status == FileStatus.failed)
+            .label("failed"),
+        )
+        .select_from(File)
+        .where(File.vector_store_id == store_id)
+    )
+    result = await session.execute(stmt)
+    row = result.one()
+    return FileCounts(
+        total=row.total,
+        in_progress=row.in_progress,
+        completed=row.completed,
+        cancelled=row.cancelled,
+        failed=row.failed,
+    )

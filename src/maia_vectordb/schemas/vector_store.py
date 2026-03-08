@@ -96,33 +96,55 @@ class VectorStoreResponse(BaseModel):
     def from_orm_model(
         cls,
         obj: Any,
+        *,
+        file_counts: "FileCounts | None" = None,
     ) -> "VectorStoreResponse":
-        """Build response from a VectorStore ORM instance."""
-        # Access attributes via getattr for type safety
+        """Build response from a VectorStore ORM instance.
+
+        Parameters
+        ----------
+        obj:
+            VectorStore ORM model.
+        file_counts:
+            Pre-computed file counts. If ``None``, falls back to the
+            JSON column on the model (for backwards compatibility),
+            or returns zeros.
+        """
         obj_id = getattr(obj, "id")
         obj_name: str = getattr(obj, "name")
         obj_status = getattr(obj, "status")
         obj_metadata: dict[str, Any] | None = getattr(obj, "metadata_")
-        obj_file_counts: dict[str, Any] | None = getattr(obj, "file_counts")
         obj_created_at: datetime = getattr(obj, "created_at")
         obj_updated_at: datetime = getattr(obj, "updated_at")
         obj_expires_at: datetime | None = getattr(obj, "expires_at")
 
-        file_counts = FileCounts()
-        if obj_file_counts is not None:
-            file_counts = FileCounts(**obj_file_counts)
+        if file_counts is None:
+            raw_counts: dict[str, Any] | None = getattr(
+                obj, "file_counts", None,
+            )
+            file_counts = (
+                FileCounts(**raw_counts)
+                if raw_counts is not None
+                else FileCounts()
+            )
 
         return cls(
             id=str(obj_id),
             name=obj_name,
             status=(
-                obj_status.value if hasattr(obj_status, "value") else str(obj_status)
+                obj_status.value
+                if hasattr(obj_status, "value")
+                else str(obj_status)
             ),
             file_counts=file_counts,
             metadata=obj_metadata,
             created_at=int(obj_created_at.timestamp()),
             updated_at=int(obj_updated_at.timestamp()),
-            expires_at=int(obj_expires_at.timestamp()) if obj_expires_at else None,
+            expires_at=(
+                int(obj_expires_at.timestamp())
+                if obj_expires_at
+                else None
+            ),
         )
 
 

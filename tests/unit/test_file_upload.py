@@ -370,7 +370,10 @@ class TestGetFile:
 class TestUploadBinaryAndAttributes:
     """Tests for PDF/DOCX upload, filename override, and attributes."""
 
-    @patch("maia_vectordb.services.file_service.extract_text", return_value="extracted pdf text")
+    @patch(
+        "maia_vectordb.services.file_service.extract_text",
+        return_value="extracted pdf text",
+    )
     @patch("maia_vectordb.services.file_service.embed_texts")
     @patch("maia_vectordb.services.file_service.split_text")
     def test_upload_pdf_file(
