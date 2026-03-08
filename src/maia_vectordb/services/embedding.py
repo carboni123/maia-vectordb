@@ -120,6 +120,7 @@ async def _call_with_retry(
         await asyncio.sleep(backoff)
         backoff *= _BACKOFF_FACTOR
 
-    # Exhausted retries
-    assert last_exc is not None
+    # Exhausted retries — last_exc is always set after the loop
+    if last_exc is None:
+        raise RuntimeError("embed_texts retry loop ended without an exception")
     raise last_exc
