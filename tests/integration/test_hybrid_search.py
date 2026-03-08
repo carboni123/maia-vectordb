@@ -10,7 +10,6 @@ Run with:
 
 from __future__ import annotations
 
-import uuid
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -67,7 +66,10 @@ async def _create_store_with_docs(
     store_name: str,
     docs: dict[str, str] | None = None,
 ) -> tuple[str, dict[str, str]]:
-    """Create a vector store and upload documents. Returns (store_id, {name: file_id})."""
+    """Create a vector store and upload documents.
+
+    Returns (store_id, {name: file_id}).
+    """
     if docs is None:
         docs = _DOCS
 
@@ -356,7 +358,8 @@ class TestTemporalDecay:
         assert len(new_results) >= 1
 
         # The old doc should have a lower temporal multiplier
-        assert old_results[0]["score_details"]["temporal"] < 0.25  # ~90 days, 30-day half-life
+        # ~90 days with 30-day half-life → temporal ≈ 0.125
+        assert old_results[0]["score_details"]["temporal"] < 0.25
         assert new_results[0]["score_details"]["temporal"] > 0.95  # nearly fresh
 
     async def test_short_half_life_penalizes_more(
@@ -422,7 +425,7 @@ class TestMMRDiversity:
     async def test_mmr_diversifies_near_duplicates(
         self, integration_client: AsyncClient,
     ) -> None:
-        """With low lambda, near-duplicate docs are penalized in favor of diverse ones."""
+        """Low lambda penalizes near-duplicate docs for diversity."""
         # Create docs where two are near-duplicates and one is different
         store_id, _ = await _create_store_with_docs(
             integration_client, "mmr-diversity",
@@ -432,8 +435,9 @@ class TestMMRDiversity:
                     "development, data science, machine learning, and scripting."
                 ),
                 "python_v2": (
-                    "Python is a versatile programming language used for web "
-                    "development, data analysis, artificial intelligence, and automation."
+                    "Python is a versatile programming language "
+                    "used for web development, data analysis, "
+                    "artificial intelligence, and automation."
                 ),
                 "cooking": (
                     "Italian cuisine features fresh ingredients like tomatoes, basil, "

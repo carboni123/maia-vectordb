@@ -8,7 +8,6 @@ import pytest
 
 from maia_vectordb.services.bm25 import bm25_score, parse_tsvector
 
-
 # ---------------------------------------------------------------------------
 # parse_tsvector
 # ---------------------------------------------------------------------------
@@ -189,7 +188,7 @@ class TestBM25Score:
     def test_known_value(self) -> None:
         """Verify against a hand-calculated BM25 score."""
         # Single term: "fox", tf=2, dl=50, N=100, df=10, k1=1.2, b=0.75
-        # IDF = ln((100 - 10 + 0.5) / (10 + 0.5) + 1) = ln(90.5/10.5 + 1) = ln(9.619) ≈ 2.2638
+        # IDF = ln((100-10+0.5)/(10+0.5) + 1) = ln(9.619) ≈ 2.2638
         # TF_norm = (2 * 2.2) / (2 + 1.2 * (1 - 0.75 + 0.75 * 50/50))
         #         = 4.4 / (2 + 1.2 * 1.0) = 4.4 / 3.2 = 1.375
         # score = 2.2638 * 1.375 ≈ 3.1128

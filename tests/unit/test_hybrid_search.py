@@ -447,7 +447,10 @@ class TestHybridSearch:
         vector_result = MagicMock()
         vector_result.fetchall.return_value = [
             _make_vector_row(content="old", vector_score=0.8, created_at=old_date),
-            _make_vector_row(content="recent", vector_score=0.8, created_at=recent_date),
+            _make_vector_row(
+                content="recent", vector_score=0.8,
+                created_at=recent_date,
+            ),
         ]
         empty_stats = MagicMock()
         empty_stats.fetchall.return_value = []
