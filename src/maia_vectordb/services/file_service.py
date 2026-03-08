@@ -184,6 +184,49 @@ async def process_file_background(
                 )
 
 
+async def list_files(
+    session: AsyncSession,
+    vector_store_id: uuid.UUID,
+    limit: int = 20,
+    offset: int = 0,
+    order: str = "desc",
+) -> tuple[list[tuple[File, int]], bool]:
+    """List files in a vector store with chunk counts.
+
+    Returns
+    -------
+    tuple[list[tuple[File, int]], bool]
+        (list of (file, chunk_count) tuples, has_more flag).
+    """
+    order_col = (
+        File.created_at.asc() if order == "asc" else File.created_at.desc()
+    )
+    file_stmt = (
+        select(File)
+        .where(File.vector_store_id == vector_store_id)
+        .order_by(order_col)
+        .offset(offset)
+        .limit(limit + 1)
+    )
+    result = await session.execute(file_stmt)
+    rows = list(result.scalars().all())
+
+    has_more = len(rows) > limit
+    files = rows[:limit]
+
+    items: list[tuple[File, int]] = []
+    for f in files:
+        count_stmt = (
+            select(func.count())
+            .select_from(FileChunk)
+            .where(FileChunk.file_id == f.id)
+        )
+        count_result = await session.execute(count_stmt)
+        items.append((f, count_result.scalar_one()))
+
+    return items, has_more
+
+
 async def get_file(
     session: AsyncSession,
     file_id: uuid.UUID,

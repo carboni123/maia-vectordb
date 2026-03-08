@@ -11,6 +11,7 @@ from fastapi import (
     APIRouter,
     BackgroundTasks,
     Form,
+    Query,
     UploadFile,
 )
 
@@ -23,7 +24,11 @@ from maia_vectordb.core.exceptions import (
     ValidationError,
 )
 from maia_vectordb.models.file import FileStatus
-from maia_vectordb.schemas.file import DeleteFileResponse, FileUploadResponse
+from maia_vectordb.schemas.file import (
+    DeleteFileResponse,
+    FileListResponse,
+    FileUploadResponse,
+)
 from maia_vectordb.services import file_service, vector_store_service
 
 logger = logging.getLogger(__name__)
@@ -126,6 +131,31 @@ async def upload_file(
         file_record.status = FileStatus.failed
         await session.commit()
         raise EmbeddingServiceError("File processing failed")
+
+
+@router.get("", response_model=FileListResponse)
+async def list_files(
+    vector_store_id: uuid.UUID,
+    session: DBSession,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    order: Annotated[str, Query(pattern="^(asc|desc)$")] = "desc",
+) -> FileListResponse:
+    """List files in a vector store with pagination."""
+    await vector_store_service.get_vector_store(session, vector_store_id)
+    items, has_more = await file_service.list_files(
+        session, vector_store_id, limit=limit, offset=offset, order=order,
+    )
+    data = [
+        FileUploadResponse.from_orm_model(f, chunk_count=cc)
+        for f, cc in items
+    ]
+    return FileListResponse(
+        data=data,
+        first_id=data[0].id if data else None,
+        last_id=data[-1].id if data else None,
+        has_more=has_more,
+    )
 
 
 @router.get("/{file_id}", response_model=FileUploadResponse)
