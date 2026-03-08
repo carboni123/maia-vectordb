@@ -29,6 +29,7 @@ async def create_vector_store(
         session=session,
         name=body.name,
         metadata=body.metadata,
+        expires_after=body.expires_after,
     )
     counts = await vector_store_service.get_file_counts(
         session, store.id,

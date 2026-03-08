@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -10,13 +11,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from maia_vectordb.core.exceptions import NotFoundError
 from maia_vectordb.models.file import File, FileStatus
 from maia_vectordb.models.vector_store import VectorStore
-from maia_vectordb.schemas.vector_store import FileCounts
+from maia_vectordb.schemas.vector_store import ExpiresAfter, FileCounts
 
 
 async def create_vector_store(
     session: AsyncSession,
     name: str,
     metadata: dict[str, object] | None = None,
+    expires_after: ExpiresAfter | None = None,
 ) -> VectorStore:
     """Create a new vector store.
 
@@ -28,6 +30,9 @@ async def create_vector_store(
         Vector store name.
     metadata:
         Optional metadata dictionary.
+    expires_after:
+        Optional expiration policy. If provided, ``expires_at`` is
+        computed as *now + days*.
 
     Returns
     -------
@@ -35,6 +40,12 @@ async def create_vector_store(
         Newly created vector store ORM model.
     """
     store = VectorStore(name=name, metadata_=metadata)
+    if expires_after is not None:
+        from datetime import datetime, timezone
+
+        store.expires_at = datetime.now(timezone.utc) + timedelta(
+            days=expires_after.days,
+        )
     session.add(store)
     await session.commit()
     await session.refresh(store)

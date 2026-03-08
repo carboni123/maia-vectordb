@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class FileCounts(BaseModel):
@@ -33,12 +33,39 @@ class FileCounts(BaseModel):
     )
 
 
+class ExpiresAfter(BaseModel):
+    """Expiration policy for a vector store (OpenAI format).
+
+    ``anchor`` is always ``"last_active_at"`` (the only value OpenAI
+    supports). ``days`` is the number of days after last activity before
+    the store expires.
+    """
+
+    anchor: str = "last_active_at"
+    days: int = Field(ge=1)
+
+
 class CreateVectorStoreRequest(BaseModel):
     """Request body for creating a vector store."""
 
     name: str = Field(min_length=1)
     metadata: dict[str, Any] | None = None
-    expires_after: dict[str, Any] | None = None
+    expires_after: ExpiresAfter | None = None
+
+    @field_validator("expires_after", mode="before")
+    @classmethod
+    def _parse_expires_after(
+        cls, v: Any,
+    ) -> Any:
+        """Accept both ``ExpiresAfter`` and a plain dict."""
+        if isinstance(v, dict):
+            anchor = v.get("anchor", "last_active_at")
+            if anchor != "last_active_at":
+                raise ValueError(
+                    f"Unsupported anchor '{anchor}'. "
+                    "Only 'last_active_at' is supported."
+                )
+        return v
 
     model_config = ConfigDict(
         from_attributes=True,
@@ -47,7 +74,7 @@ class CreateVectorStoreRequest(BaseModel):
                 {
                     "name": "my-knowledge-base",
                     "metadata": {"project": "chatbot"},
-                    "expires_after": None,
+                    "expires_after": {"anchor": "last_active_at", "days": 7},
                 }
             ]
         },
