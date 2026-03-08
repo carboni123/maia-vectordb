@@ -93,23 +93,17 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     # Pre-warm tiktoken encoding so the first request doesn't download it
     get_encoding()
 
-    # Verify OpenAI embedding API is reachable (non-blocking warmup).
-    # Short timeout so a slow/unreachable API doesn't block startup.
+    # Verify OpenAI embedding API is reachable (warmup via the shared
+    # singleton so we don't create a throw-away client).
     try:
-        import openai
+        from maia_vectordb.services.embedding import embed_texts
 
-        client = openai.AsyncOpenAI(
-            api_key=settings.openai_api_key, timeout=5.0,
-        )
-        await client.embeddings.create(
-            input=["warmup"],
-            model=settings.embedding_model,
-            dimensions=settings.embedding_dimension,
-        )
+        await embed_texts(["warmup"])
         _logger.info("Startup complete — OpenAI embedding API verified")
     except Exception:
         _logger.warning(
-            "OpenAI embedding API unreachable at startup — first request may be slow",
+            "OpenAI embedding API unreachable at startup "
+            "— first request may be slow",
         )
 
     yield
