@@ -12,9 +12,11 @@ COPY pyproject.toml uv.lock ./
 # Install production dependencies only (no project itself yet)
 RUN uv sync --frozen --no-dev --no-install-project
 
-# Copy application source and README (needed by hatchling build)
+# Copy application source, README (needed by hatchling build), and alembic
 COPY README.md ./
 COPY src/ src/
+COPY alembic/ alembic/
+COPY alembic.ini ./
 
 # Install the project itself, then strip test data to reduce image size
 RUN uv sync --frozen --no-dev \
@@ -44,15 +46,21 @@ WORKDIR /app
 RUN groupadd --gid 1000 appuser \
     && useradd --uid 1000 --gid appuser --shell /bin/bash --create-home appuser
 
-# Copy the virtual environment, source, and tiktoken cache from builder
+# Copy the virtual environment, source, tiktoken cache, and alembic from builder
 COPY --from=builder /app/.venv /app/.venv
 COPY --from=builder /app/src /app/src
-COPY --from=builder /app/.tiktoken_cache /app/.tiktoken_cache
+COPY --from=builder --chown=appuser:appuser /app/.tiktoken_cache /app/.tiktoken_cache
+COPY --from=builder /app/alembic /app/alembic
+COPY --from=builder /app/alembic.ini /app/alembic.ini
 
 # Ensure venv binaries are on PATH
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
 ENV TIKTOKEN_CACHE_DIR=/app/.tiktoken_cache
+
+# Copy entrypoint script and ensure it's executable
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
 
 # Switch to non-root user
 USER appuser
@@ -62,4 +70,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=3 \
     CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
 
-CMD ["uvicorn", "maia_vectordb.main:app", "--host", "0.0.0.0", "--port", "8000"]
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
+CMD []
