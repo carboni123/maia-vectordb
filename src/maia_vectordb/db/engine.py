@@ -53,9 +53,9 @@ async def init_engine() -> None:
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
 
         # Verify required tables exist — don't CREATE them (that's Alembic's job)
-        result = await conn.execute(text(
-            "SELECT tablename FROM pg_tables WHERE schemaname = 'public'"
-        ))
+        result = await conn.execute(
+            text("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
+        )
         existing = {row[0] for row in result.fetchall()}
         missing = _REQUIRED_TABLES - existing
 
@@ -67,6 +67,7 @@ async def init_engine() -> None:
             # Fallback: create tables for fresh installs / dev environments
             import maia_vectordb.models  # noqa: F401
             from maia_vectordb.db.base import Base
+
             await conn.run_sync(Base.metadata.create_all)
         else:
             logger.info("Schema verified — all required tables present")

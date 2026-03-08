@@ -167,15 +167,9 @@ async def get_file_counts(
             func.count()
             .filter(File.status == FileStatus.in_progress)
             .label("in_progress"),
-            func.count()
-            .filter(File.status == FileStatus.completed)
-            .label("completed"),
-            func.count()
-            .filter(File.status == FileStatus.cancelled)
-            .label("cancelled"),
-            func.count()
-            .filter(File.status == FileStatus.failed)
-            .label("failed"),
+            func.count().filter(File.status == FileStatus.completed).label("completed"),
+            func.count().filter(File.status == FileStatus.cancelled).label("cancelled"),
+            func.count().filter(File.status == FileStatus.failed).label("failed"),
         )
         .select_from(File)
         .where(File.vector_store_id == store_id)

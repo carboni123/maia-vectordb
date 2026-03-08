@@ -33,8 +33,7 @@ def get_encoding() -> tiktoken.Encoding:
         except KeyError:
             _encoding = tiktoken.get_encoding("cl100k_base")
             logger.info(
-                "Model %s not in tiktoken registry, "
-                "using cl100k_base encoding",
+                "Model %s not in tiktoken registry, using cl100k_base encoding",
                 model,
             )
     return _encoding

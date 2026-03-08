@@ -63,9 +63,7 @@ async def upload_file(
         try:
             parsed_attributes = json.loads(attributes)
         except (json.JSONDecodeError, ValueError) as exc:
-            raise ValidationError(
-                "Invalid JSON in 'attributes' field."
-            ) from exc
+            raise ValidationError("Invalid JSON in 'attributes' field.") from exc
         if not isinstance(parsed_attributes, dict):
             raise ValidationError("'attributes' must be a JSON object.")
 
@@ -73,16 +71,18 @@ async def upload_file(
     raw_bytes: bytes | None = None
     if file is not None:
         raw_bytes = await file.read()
-    resolved_filename = filename or (
-        file.filename if file is not None else None
-    ) or (
-        "raw_text.txt" if text is not None else "upload.txt"
+    resolved_filename = (
+        filename
+        or (file.filename if file is not None else None)
+        or ("raw_text.txt" if text is not None else "upload.txt")
     )
     content, content_type = file_service.read_upload_content(
-        raw_bytes, text, resolved_filename,
+        raw_bytes,
+        text,
+        resolved_filename,
     )
-    byte_size = len(raw_bytes) if raw_bytes is not None else len(
-        content.encode("utf-8")
+    byte_size = (
+        len(raw_bytes) if raw_bytes is not None else len(content.encode("utf-8"))
     )
 
     # 2a. Enforce upload size limit
@@ -111,16 +111,21 @@ async def upload_file(
             content,
         )
         return FileUploadResponse.from_orm_model(
-            file_record, chunk_count=0,
+            file_record,
+            chunk_count=0,
         )
 
     # Inline processing via service
     try:
         chunk_count = await file_service.process_file_inline(
-            session, file_record, content, vector_store_id,
+            session,
+            file_record,
+            content,
+            vector_store_id,
         )
         return FileUploadResponse.from_orm_model(
-            file_record, chunk_count=chunk_count,
+            file_record,
+            chunk_count=chunk_count,
         )
     except APIError:
         file_record.status = FileStatus.failed
@@ -144,12 +149,13 @@ async def list_files(
     """List files in a vector store with pagination."""
     await vector_store_service.get_vector_store(session, vector_store_id)
     items, has_more = await file_service.list_files(
-        session, vector_store_id, limit=limit, offset=offset, order=order,
+        session,
+        vector_store_id,
+        limit=limit,
+        offset=offset,
+        order=order,
     )
-    data = [
-        FileUploadResponse.from_orm_model(f, chunk_count=cc)
-        for f, cc in items
-    ]
+    data = [FileUploadResponse.from_orm_model(f, chunk_count=cc) for f, cc in items]
     return FileListResponse(
         data=data,
         first_id=data[0].id if data else None,
@@ -181,6 +187,8 @@ async def delete_file(
     """Delete a file and its chunks from a vector store."""
     await vector_store_service.get_vector_store(session, vector_store_id)
     deleted_id = await file_service.delete_file(
-        session, file_id, vector_store_id,
+        session,
+        file_id,
+        vector_store_id,
     )
     return DeleteFileResponse(id=deleted_id)

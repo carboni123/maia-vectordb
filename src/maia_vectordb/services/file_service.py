@@ -38,8 +38,7 @@ CONTENT_TYPE_MAP: dict[str, str] = {
     ".yml": "application/x-yaml",
     ".pdf": "application/pdf",
     ".docx": (
-        "application/vnd.openxmlformats-officedocument"
-        ".wordprocessingml.document"
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     ),
 }
 
@@ -75,9 +74,7 @@ def read_upload_content(
         content_type = CONTENT_TYPE_MAP.get(ext)
         return raw_text, content_type
 
-    raise ValidationError(
-        "Provide either a file upload or a 'text' field."
-    )
+    raise ValidationError("Provide either a file upload or a 'text' field.")
 
 
 async def create_file(
@@ -113,9 +110,7 @@ async def process_file_inline(
 
     Updates the file status to completed/failed. Returns chunk count.
     """
-    chunk_objs = await process_chunks(
-        content, file_record.id, vector_store_id
-    )
+    chunk_objs = await process_chunks(content, file_record.id, vector_store_id)
     session.add_all(chunk_objs)
     file_record.status = FileStatus.completed
     await session.commit()
@@ -179,9 +174,7 @@ async def process_file_background(
                     file_obj.status = FileStatus.failed
                 await session.commit()
             except Exception:
-                logger.exception(
-                    "Failed to mark file %s as failed", file_id
-                )
+                logger.exception("Failed to mark file %s as failed", file_id)
 
 
 async def list_files(
@@ -198,9 +191,7 @@ async def list_files(
     tuple[list[tuple[File, int]], bool]
         (list of (file, chunk_count) tuples, has_more flag).
     """
-    order_col = (
-        File.created_at.asc() if order == "asc" else File.created_at.desc()
-    )
+    order_col = File.created_at.asc() if order == "asc" else File.created_at.desc()
     file_stmt = (
         select(File)
         .where(File.vector_store_id == vector_store_id)
@@ -217,9 +208,7 @@ async def list_files(
     items: list[tuple[File, int]] = []
     for f in files:
         count_stmt = (
-            select(func.count())
-            .select_from(FileChunk)
-            .where(FileChunk.file_id == f.id)
+            select(func.count()).select_from(FileChunk).where(FileChunk.file_id == f.id)
         )
         count_result = await session.execute(count_stmt)
         items.append((f, count_result.scalar_one()))
@@ -249,9 +238,7 @@ async def get_file(
         raise NotFoundError("File not found")
 
     stmt = (
-        select(func.count())
-        .select_from(FileChunk)
-        .where(FileChunk.file_id == file_id)
+        select(func.count()).select_from(FileChunk).where(FileChunk.file_id == file_id)
     )
     result = await session.execute(stmt)
     chunk_count = result.scalar_one()

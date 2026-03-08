@@ -285,7 +285,11 @@ def _make_text_row(
 
 
 def _make_stats_row(
-    *, term: str, df: int = 5, total_docs: int = 100, avg_dl: float = 50.0,
+    *,
+    term: str,
+    df: int = 5,
+    total_docs: int = 100,
+    avg_dl: float = 50.0,
 ) -> Any:
     row = MagicMock()
     row.total_docs = total_docs
@@ -298,9 +302,7 @@ def _make_stats_row(
 def _make_stats_result(*terms: str) -> MagicMock:
     """Create a mock result for the BM25 corpus stats query."""
     result = MagicMock()
-    result.fetchall.return_value = [
-        _make_stats_row(term=t) for t in terms
-    ]
+    result.fetchall.return_value = [_make_stats_row(term=t) for t in terms]
     return result
 
 
@@ -409,8 +411,9 @@ class TestHybridSearch:
         vector_result = MagicMock()
         vector_result.fetchall.return_value = [
             # High relevance but very old → post-decay score will be low
-            _make_vector_row(content="old but relevant", vector_score=0.9,
-                             created_at=old_date),
+            _make_vector_row(
+                content="old but relevant", vector_score=0.9, created_at=old_date
+            ),
             # Low relevance
             _make_vector_row(content="irrelevant", vector_score=0.1),
         ]
@@ -448,7 +451,8 @@ class TestHybridSearch:
         vector_result.fetchall.return_value = [
             _make_vector_row(content="old", vector_score=0.8, created_at=old_date),
             _make_vector_row(
-                content="recent", vector_score=0.8,
+                content="recent",
+                vector_score=0.8,
                 created_at=recent_date,
             ),
         ]
@@ -477,7 +481,8 @@ class TestHybridSearch:
     @pytest.mark.asyncio
     @patch("maia_vectordb.services.hybrid_search.datetime")
     async def test_half_life_multiplier_correct(
-        self, mock_dt: MagicMock,
+        self,
+        mock_dt: MagicMock,
     ) -> None:
         """At exactly half_life_days, score should be ~50% of a fresh doc."""
         fixed_now = datetime(2026, 6, 1, tzinfo=timezone.utc)
@@ -490,7 +495,8 @@ class TestHybridSearch:
         vector_result = MagicMock()
         vector_result.fetchall.return_value = [
             _make_vector_row(
-                content="aged", vector_score=0.9,
+                content="aged",
+                vector_score=0.9,
                 created_at=fixed_now - timedelta(days=30),
             ),
         ]
@@ -539,16 +545,20 @@ class TestHybridSearch:
         vector_result = MagicMock()
         vector_result.fetchall.return_value = [
             _make_vector_row(
-                chunk_id=shared_id, file_id=shared_file_id,
-                content="shared", vector_score=0.9,
+                chunk_id=shared_id,
+                file_id=shared_file_id,
+                content="shared",
+                vector_score=0.9,
             ),
         ]
         stats_result = _make_stats_result("share")
         text_result = MagicMock()
         text_result.fetchall.return_value = [
             _make_text_row(
-                chunk_id=shared_id, file_id=shared_file_id,
-                content="shared", doc_tsvector="'share':1",
+                chunk_id=shared_id,
+                file_id=shared_file_id,
+                content="shared",
+                doc_tsvector="'share':1",
             ),
         ]
         session.execute = AsyncMock(
@@ -681,7 +691,9 @@ class TestHybridSearchEndpoint:
         assert call_kwargs["mmr_lambda"] == 0.6
 
     def test_zero_ranking_weights_returns_422(
-        self, client: TestClient, mock_session: MagicMock,
+        self,
+        client: TestClient,
+        mock_session: MagicMock,
     ) -> None:
         """Both weights at 0 should return a validation error."""
         store_id = uuid.uuid4()

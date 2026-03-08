@@ -60,9 +60,7 @@ async def similarity_search(
 
     # Score threshold filter (applied as distance threshold)
     if score_threshold is not None:
-        where_clauses.append(
-            "(fc.embedding <=> :query_embedding) <= :max_distance"
-        )
+        where_clauses.append("(fc.embedding <=> :query_embedding) <= :max_distance")
         params["max_distance"] = 1.0 - score_threshold
 
     where_sql = " AND ".join(where_clauses)

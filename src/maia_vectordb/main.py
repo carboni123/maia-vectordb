@@ -102,8 +102,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         _logger.info("Startup complete — OpenAI embedding API verified")
     except Exception:
         _logger.warning(
-            "OpenAI embedding API unreachable at startup "
-            "— first request may be slow",
+            "OpenAI embedding API unreachable at startup — first request may be slow",
         )
 
     yield

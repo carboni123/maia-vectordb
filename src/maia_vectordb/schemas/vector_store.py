@@ -55,7 +55,8 @@ class CreateVectorStoreRequest(BaseModel):
     @field_validator("expires_after", mode="before")
     @classmethod
     def _parse_expires_after(
-        cls, v: Any,
+        cls,
+        v: Any,
     ) -> Any:
         """Accept both ``ExpiresAfter`` and a plain dict."""
         if isinstance(v, dict):
@@ -147,31 +148,25 @@ class VectorStoreResponse(BaseModel):
 
         if file_counts is None:
             raw_counts: dict[str, Any] | None = getattr(
-                obj, "file_counts", None,
+                obj,
+                "file_counts",
+                None,
             )
             file_counts = (
-                FileCounts(**raw_counts)
-                if raw_counts is not None
-                else FileCounts()
+                FileCounts(**raw_counts) if raw_counts is not None else FileCounts()
             )
 
         return cls(
             id=str(obj_id),
             name=obj_name,
             status=(
-                obj_status.value
-                if hasattr(obj_status, "value")
-                else str(obj_status)
+                obj_status.value if hasattr(obj_status, "value") else str(obj_status)
             ),
             file_counts=file_counts,
             metadata=obj_metadata,
             created_at=int(obj_created_at.timestamp()),
             updated_at=int(obj_updated_at.timestamp()),
-            expires_at=(
-                int(obj_expires_at.timestamp())
-                if obj_expires_at
-                else None
-            ),
+            expires_at=(int(obj_expires_at.timestamp()) if obj_expires_at else None),
         )
 
 

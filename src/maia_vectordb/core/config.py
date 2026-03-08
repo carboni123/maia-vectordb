@@ -18,9 +18,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    database_url: str = (
-        "postgresql+asyncpg://user:pass@localhost:5432/maia_vectors"
-    )
+    database_url: str = "postgresql+asyncpg://user:pass@localhost:5432/maia_vectors"
     openai_api_key: str = ""
     embedding_model: str = "text-embedding-3-small"
     embedding_dimension: int = 1536

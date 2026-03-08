@@ -84,8 +84,14 @@ def _ensure_test_db_exists() -> None:
     asyncio.run(_inner())
 
 
-# Run once at import time — only creates DB, does NOT create an engine
-_ensure_test_db_exists()
+def pytest_configure(config: Any) -> None:
+    """Bootstrap the test database only when integration tests will run."""
+    # When invoked with e.g. -m "not integration", skip DB setup entirely
+    # so CI doesn't fail when there's no PostgreSQL available.
+    marker_expr = config.getoption("-m", default="")
+    if "not integration" in marker_expr:
+        return
+    _ensure_test_db_exists()
 
 
 # ---------------------------------------------------------------------------

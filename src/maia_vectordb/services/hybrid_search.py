@@ -54,9 +54,7 @@ class _Candidate:
     temporal_multiplier: float = 1.0
     relevance_score: float = 0.0
     combined_score: float = 0.0
-    _token_set: set[str] | None = field(
-        default=None, repr=False, compare=False
-    )
+    _token_set: set[str] | None = field(default=None, repr=False, compare=False)
 
     @property
     def token_set(self) -> set[str]:
@@ -126,25 +124,36 @@ async def hybrid_search(
 
     # Build filter clauses per alias (avoids fragile string replacement)
     vec_clauses, vec_params = _build_filter_params(
-        metadata_filter, alias="fc",
+        metadata_filter,
+        alias="fc",
     )
     txt_clauses, txt_params = _build_filter_params(
-        metadata_filter, alias="fc_inner",
+        metadata_filter,
+        alias="fc_inner",
     )
 
     # 1. Retrieve candidates from both retrieval strategies
     vector_candidates = await _vector_candidates(
-        session, vector_store_id, query_embedding, num_candidates,
-        vec_clauses, vec_params,
+        session,
+        vector_store_id,
+        query_embedding,
+        num_candidates,
+        vec_clauses,
+        vec_params,
     )
     text_candidates = await _text_candidates(
-        session, vector_store_id, query_text, num_candidates,
-        txt_clauses, txt_params,
+        session,
+        vector_store_id,
+        query_text,
+        num_candidates,
+        txt_clauses,
+        txt_params,
     )
 
     logger.debug(
         "Candidates retrieved: vector=%d, text=%d",
-        len(vector_candidates), len(text_candidates),
+        len(vector_candidates),
+        len(text_candidates),
     )
 
     # 2. Merge by chunk ID with weighted fusion
@@ -169,9 +178,7 @@ async def hybrid_search(
         vector_weight, text_weight = 0.0, 1.0
 
     for c in merged:
-        c.relevance_score = (
-            vector_weight * c.vector_score + text_weight * c.text_score
-        )
+        c.relevance_score = vector_weight * c.vector_score + text_weight * c.text_score
         c.combined_score = c.relevance_score
 
     # 3. Filter by score_threshold on pre-decay relevance
@@ -180,7 +187,9 @@ async def hybrid_search(
         merged = [c for c in merged if c.relevance_score >= score_threshold]
         logger.debug(
             "Score threshold %.3f: %d → %d candidates",
-            score_threshold, before, len(merged),
+            score_threshold,
+            before,
+            len(merged),
         )
 
     if not merged:
@@ -205,7 +214,9 @@ async def hybrid_search(
         scores = [c.combined_score for c in selected]
         logger.debug(
             "Final %d results: score range [%.4f, %.4f]",
-            len(selected), min(scores), max(scores),
+            len(selected),
+            min(scores),
+            max(scores),
         )
 
     return [
@@ -422,7 +433,8 @@ async def _bm25_corpus_stats(
     """)
 
     result = await session.execute(
-        sql, {"vector_store_id": vector_store_id, "query_text": query_text},
+        sql,
+        {"vector_store_id": vector_store_id, "query_text": query_text},
     )
     rows = result.fetchall()
 
@@ -526,10 +538,7 @@ def _mmr_rerank(
 
             # Diversity penalty: max Jaccard similarity to any selected doc
             max_sim = max(
-                (
-                    _jaccard_similarity(cand.token_set, s.token_set)
-                    for s in selected
-                ),
+                (_jaccard_similarity(cand.token_set, s.token_set) for s in selected),
                 default=0.0,
             )
 

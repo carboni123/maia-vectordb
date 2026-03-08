@@ -38,8 +38,7 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         if raw_id:
             # Sanitize: keep printable ASCII only, truncate to max length
             sanitized = "".join(
-                c for c in raw_id[:_MAX_REQUEST_ID_LENGTH]
-                if ord(c) in _SAFE_CHARS
+                c for c in raw_id[:_MAX_REQUEST_ID_LENGTH] if ord(c) in _SAFE_CHARS
             )
             request_id = sanitized or str(uuid.uuid4())
         else:
