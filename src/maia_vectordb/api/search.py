@@ -49,7 +49,7 @@ async def search(
             query_text=body.query,
             query_embedding=query_embedding,
             max_results=body.max_results,
-            filter=body.filter,
+            metadata_filter=body.filter,
             score_threshold=body.score_threshold,
             vector_weight=weights.vector if weights else 0.7,
             text_weight=weights.text if weights else 0.3,
@@ -62,7 +62,7 @@ async def search(
             vector_store_id=vector_store_id,
             query_embedding=query_embedding,
             max_results=body.max_results,
-            filter=body.filter,
+            metadata_filter=body.filter,
             score_threshold=body.score_threshold,
         )
 

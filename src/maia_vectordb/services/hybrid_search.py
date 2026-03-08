@@ -76,7 +76,7 @@ async def hybrid_search(
     query_text: str,
     query_embedding: list[float],
     max_results: int,
-    filter: dict[str, Any] | None = None,
+    metadata_filter: dict[str, Any] | None = None,
     score_threshold: float | None = None,
     vector_weight: float = 0.7,
     text_weight: float = 0.3,
@@ -97,7 +97,7 @@ async def hybrid_search(
         Pre-computed embedding of *query_text* (used for vector similarity).
     max_results:
         Number of final results to return.
-    filter:
+    metadata_filter:
         Optional metadata key-value filters.
     score_threshold:
         Minimum relevance score (pre-decay fusion of vector + text).
@@ -124,7 +124,7 @@ async def hybrid_search(
     num_candidates = min(max_results * _CANDIDATE_MULTIPLIER, 100)
 
     # Build shared WHERE / params for metadata filters
-    filter_clauses, filter_params = _build_filter_params(filter)
+    filter_clauses, filter_params = _build_filter_params(metadata_filter)
 
     # 1. Retrieve candidates from both retrieval strategies
     vector_candidates = await _vector_candidates(
@@ -227,13 +227,13 @@ async def hybrid_search(
 
 
 def _build_filter_params(
-    filter: dict[str, Any] | None,
+    metadata_filter: dict[str, Any] | None,
 ) -> tuple[list[str], dict[str, Any]]:
     """Build SQL WHERE clauses and params for metadata filters."""
     clauses: list[str] = []
     params: dict[str, Any] = {}
-    if filter:
-        for i, (key, value) in enumerate(filter.items()):
+    if metadata_filter:
+        for i, (key, value) in enumerate(metadata_filter.items()):
             pk = f"filter_key_{i}"
             pv = f"filter_val_{i}"
             clauses.append(f"fc.metadata->>:{pk} = :{pv}")

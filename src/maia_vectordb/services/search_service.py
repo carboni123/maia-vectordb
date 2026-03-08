@@ -16,7 +16,7 @@ async def similarity_search(
     vector_store_id: uuid.UUID,
     query_embedding: list[float],
     max_results: int,
-    filter: dict[str, Any] | None = None,
+    metadata_filter: dict[str, Any] | None = None,
     score_threshold: float | None = None,
 ) -> list[SearchResult]:
     """Run cosine similarity search over a vector store.
@@ -31,7 +31,7 @@ async def similarity_search(
         Pre-computed embedding for the query text.
     max_results:
         Maximum number of results to return.
-    filter:
+    metadata_filter:
         Optional metadata key-value filters.
     score_threshold:
         Minimum similarity score (0-1). Results below this are excluded.
@@ -53,8 +53,8 @@ async def similarity_search(
     ]
 
     # Metadata filters: each key-value pair becomes a JSON containment check
-    if filter:
-        for i, (key, value) in enumerate(filter.items()):
+    if metadata_filter:
+        for i, (key, value) in enumerate(metadata_filter.items()):
             param_key = f"filter_key_{i}"
             param_val = f"filter_val_{i}"
             where_clauses.append(f"fc.metadata->>:{param_key} = :{param_val}")

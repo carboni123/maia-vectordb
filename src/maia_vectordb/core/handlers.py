@@ -56,7 +56,7 @@ async def validation_exception_handler(
     """Handle Pydantic / query-param validation errors."""
     messages = []
     for err in exc.errors():
-        loc = " -> ".join(str(l) for l in err["loc"])  # noqa: E741
+        loc = " -> ".join(str(part) for part in err["loc"])
         messages.append(f"{loc}: {err['msg']}")
     combined = "; ".join(messages)
     return _error_response(
