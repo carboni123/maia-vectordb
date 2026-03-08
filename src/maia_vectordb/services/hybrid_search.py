@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from maia_vectordb.schemas.search import ScoreDetails, SearchResult
 from maia_vectordb.services.bm25 import bm25_score, parse_tsvector
+from maia_vectordb.services.query_filters import build_metadata_clauses
 
 logger = logging.getLogger(__name__)
 
@@ -123,17 +124,22 @@ async def hybrid_search(
 
     num_candidates = min(max_results * _CANDIDATE_MULTIPLIER, 100)
 
-    # Build shared WHERE / params for metadata filters
-    filter_clauses, filter_params = _build_filter_params(metadata_filter)
+    # Build filter clauses per alias (avoids fragile string replacement)
+    vec_clauses, vec_params = _build_filter_params(
+        metadata_filter, alias="fc",
+    )
+    txt_clauses, txt_params = _build_filter_params(
+        metadata_filter, alias="fc_inner",
+    )
 
     # 1. Retrieve candidates from both retrieval strategies
     vector_candidates = await _vector_candidates(
         session, vector_store_id, query_embedding, num_candidates,
-        filter_clauses, filter_params,
+        vec_clauses, vec_params,
     )
     text_candidates = await _text_candidates(
         session, vector_store_id, query_text, num_candidates,
-        filter_clauses, filter_params,
+        txt_clauses, txt_params,
     )
 
     logger.debug(
@@ -228,18 +234,11 @@ async def hybrid_search(
 
 def _build_filter_params(
     metadata_filter: dict[str, Any] | None,
+    *,
+    alias: str = "fc",
 ) -> tuple[list[str], dict[str, Any]]:
     """Build SQL WHERE clauses and params for metadata filters."""
-    clauses: list[str] = []
-    params: dict[str, Any] = {}
-    if metadata_filter:
-        for i, (key, value) in enumerate(metadata_filter.items()):
-            pk = f"filter_key_{i}"
-            pv = f"filter_val_{i}"
-            clauses.append(f"fc.metadata->>:{pk} = :{pv}")
-            params[pk] = key
-            params[pv] = str(value)
-    return clauses, params
+    return build_metadata_clauses(metadata_filter, alias=alias)
 
 
 async def _vector_candidates(
@@ -314,11 +313,10 @@ async def _text_candidates(
     # Phase 2: Fetch matching candidates with tsvector for TF extraction.
     # Uses a CTE so to_tsvector is computed once in SELECT and reused in
     # the outer ORDER BY (the GIN index handles the WHERE @@ filter).
+    # extra_clauses already use the fc_inner alias (built by caller).
     cte_extra = ""
     if extra_clauses:
-        # Metadata filters reference fc_inner.metadata via the :filter_key params.
-        inner_clauses = [c.replace("fc.", "fc_inner.") for c in extra_clauses]
-        cte_extra = " AND " + " AND ".join(inner_clauses)
+        cte_extra = " AND " + " AND ".join(extra_clauses)
 
     params: dict[str, Any] = {
         "vector_store_id": vector_store_id,

@@ -9,6 +9,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from maia_vectordb.schemas.search import SearchResult
+from maia_vectordb.services.query_filters import build_metadata_clauses
 
 
 async def similarity_search(
@@ -52,18 +53,13 @@ async def similarity_search(
         "fc.embedding IS NOT NULL",
     ]
 
-    # Metadata filters: each key-value pair becomes a JSON containment check
-    if metadata_filter:
-        for i, (key, value) in enumerate(metadata_filter.items()):
-            param_key = f"filter_key_{i}"
-            param_val = f"filter_val_{i}"
-            where_clauses.append(f"fc.metadata->>:{param_key} = :{param_val}")
-            params[param_key] = key
-            params[param_val] = str(value)
+    # Metadata filters via shared builder (parameterized)
+    meta_clauses, meta_params = build_metadata_clauses(metadata_filter)
+    where_clauses.extend(meta_clauses)
+    params.update(meta_params)
 
     # Score threshold filter (applied as distance threshold)
     if score_threshold is not None:
-        # score = 1 - distance, so distance < 1 - threshold
         where_clauses.append(
             "(fc.embedding <=> :query_embedding) <= :max_distance"
         )
@@ -71,22 +67,18 @@ async def similarity_search(
 
     where_sql = " AND ".join(where_clauses)
 
-    sql = text(f"""
-        SELECT
-            fc.id,
-            fc.file_id,
-            fc.chunk_index,
-            fc.content,
-            fc.metadata AS chunk_metadata,
-            f.filename,
-            f.attributes AS file_attributes,
-            (1 - (fc.embedding <=> :query_embedding)) AS score
-        FROM file_chunks fc
-        JOIN files f ON f.id = fc.file_id
-        WHERE {where_sql}
-        ORDER BY fc.embedding <=> :query_embedding
-        LIMIT :max_results
-    """)
+    sql = text(
+        "SELECT "
+        "  fc.id, fc.file_id, fc.chunk_index, fc.content, "
+        "  fc.metadata AS chunk_metadata, "
+        "  f.filename, f.attributes AS file_attributes, "
+        "  (1 - (fc.embedding <=> :query_embedding)) AS score "
+        "FROM file_chunks fc "
+        "JOIN files f ON f.id = fc.file_id "
+        f"WHERE {where_sql} "
+        "ORDER BY fc.embedding <=> :query_embedding "
+        "LIMIT :max_results"
+    )
 
     result = await session.execute(sql, params)
     rows = result.fetchall()
