@@ -15,7 +15,7 @@ import logging
 import math
 import re
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
@@ -53,7 +53,9 @@ class _Candidate:
     temporal_multiplier: float = 1.0
     relevance_score: float = 0.0
     combined_score: float = 0.0
-    _token_set: set[str] | None = None
+    _token_set: set[str] | None = field(
+        default=None, repr=False, compare=False
+    )
 
     @property
     def token_set(self) -> set[str]:
