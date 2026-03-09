@@ -126,14 +126,17 @@ class TestBuildStructuredMetadata:
         ]
         result = build_structured_metadata(columns, row_count=42)
 
-        assert result["structured"] is True
-        assert result["table_name"] == "csv_rows"
-        assert result["row_count"] == 42
-        assert result["columns"] == columns
+        # "structured" is a truthy dict (not a boolean)
+        assert result["structured"]
+        assert isinstance(result["structured"], dict)
+        assert result["structured"]["table_name"] == "csv_rows"
+        assert result["structured"]["row_count"] == 42
+        assert result["structured"]["columns"] == columns
 
     def test_zero_rows(self) -> None:
         result = build_structured_metadata([], row_count=0)
 
-        assert result["structured"] is True
-        assert result["row_count"] == 0
-        assert result["columns"] == []
+        assert result["structured"]
+        assert isinstance(result["structured"], dict)
+        assert result["structured"]["row_count"] == 0
+        assert result["structured"]["columns"] == []

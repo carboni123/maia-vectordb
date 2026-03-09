@@ -143,17 +143,23 @@ def build_structured_metadata(
 ) -> dict[str, Any]:
     """Build the metadata dict stored on a structured CSV file record.
 
+    The ``"structured"`` key holds a dict (truthy) with column metadata and
+    row count.  Downstream code uses ``attrs.get("structured")`` both as a
+    truthiness check *and* to access ``.get("columns")``, so the value
+    **must** be a dict — not a plain boolean.
+
     Returns
     -------
     dict
-        ``{"structured": True, "table_name": "csv_rows",
-        "row_count": row_count, "columns": columns}``
+        ``{"structured": {"table_name": "csv_rows",
+        "row_count": row_count, "columns": columns}}``
     """
     return {
-        "structured": True,
-        "table_name": "csv_rows",
-        "row_count": row_count,
-        "columns": columns,
+        "structured": {
+            "table_name": "csv_rows",
+            "row_count": row_count,
+            "columns": columns,
+        },
     }
 
 
