@@ -16,6 +16,7 @@ Complete reference for all MAIA VectorDB API endpoints.
 - [Vector Stores](#vector-stores)
 - [File Management](#file-management)
 - [Search](#search)
+- [Structured CSV](#structured-csv)
 - [Error Responses](#error-responses)
 
 ---
@@ -407,6 +408,104 @@ Perform semantic similarity search over a vector store using cosine similarity.
 **Error Responses:**
 - `404 Not Found` - Vector store doesn't exist
 - `400 Bad Request` - Invalid query parameters
+
+---
+
+## Structured CSV
+
+When CSV files are uploaded, their rows are also stored as JSONB for structured queries. See [STRUCTURED-CSV.md](STRUCTURED-CSV.md) for architecture details.
+
+### POST /v1/vector_stores/{vector_store_id}/query
+
+Execute a read-only SQL query against structured CSV data in a vector store.
+
+**Path Parameters:**
+- `vector_store_id` (UUID, required): Vector store ID
+
+**Request Body:**
+```json
+{
+  "sql": "SELECT data->>'city' AS city, COUNT(*) AS total FROM csv_rows WHERE file_id = 'abc123' AND (data->>'beds')::integer >= 3 GROUP BY data->>'city' ORDER BY total DESC LIMIT 100"
+}
+```
+
+**Fields:**
+- `sql` (string, required, max 10,000 chars): SQL SELECT query to execute. Must only reference the `csv_rows` table. Use `data->>'column_name'` to access fields, with casts for non-text types (e.g. `(data->>'price')::numeric`).
+
+**Response:** `200 OK`
+```json
+{
+  "columns": ["city", "total"],
+  "rows": [["Austin", 47], ["Dallas", 32], ["Houston", 28]],
+  "row_count": 3,
+  "truncated": false
+}
+```
+
+**Response Fields:**
+- `columns` (list[string]): Column names from the SELECT clause
+- `rows` (list[list]): Row data as arrays (positional, matching column order)
+- `row_count` (integer): Number of rows returned
+- `truncated` (boolean): True if results were cut off at 100 KB
+
+**Safety:**
+- Only single SELECT statements are allowed
+- Only the `csv_rows` table may be referenced (subqueries, joins, and CTEs included)
+- DML/DDL keywords (INSERT, DROP, etc.) are rejected
+- Cross-schema references are rejected
+- `LIMIT 5000` is auto-injected if no LIMIT clause is present
+- A 10-second statement timeout is enforced
+
+**Error Responses:**
+- `400 Bad Request` - Non-SELECT SQL, forbidden keywords, invalid table references, SQL execution error
+- `404 Not Found` - Vector store doesn't exist
+
+---
+
+### GET /v1/vector_stores/{vector_store_id}/files/{file_id}/preview
+
+Preview the first N rows of a structured CSV file with column metadata.
+
+**Path Parameters:**
+- `vector_store_id` (UUID, required): Vector store ID
+- `file_id` (UUID, required): File ID
+
+**Query Parameters:**
+- `limit` (integer, 1-500, default: 50): Number of rows to return
+
+**Response:** `200 OK`
+```json
+{
+  "columns": [
+    {
+      "normalized": "price_usd",
+      "original_header": "Price (USD)",
+      "inferred_type": "numeric",
+      "sample_values": [450000, 620000, 380000]
+    },
+    {
+      "normalized": "beds",
+      "original_header": "Beds / Bedrooms",
+      "inferred_type": "integer",
+      "sample_values": [2, 3, 4]
+    }
+  ],
+  "rows": [
+    {"price_usd": 450000, "beds": 3, "city": "Austin"},
+    {"price_usd": 620000, "beds": 4, "city": "Dallas"}
+  ],
+  "total_rows": 45230
+}
+```
+
+**Response Fields:**
+- `columns` (list[PreviewColumn]): Column metadata with normalized names, original headers, inferred types, and up to 3 sample values
+- `rows` (list[dict]): Row data as objects with normalized column names as keys
+- `total_rows` (integer): Total row count for this file (not just the preview)
+
+**Error Responses:**
+- `400 Bad Request` - File does not contain structured CSV data
+- `404 Not Found` - Vector store or file doesn't exist, or file belongs to a different store
 
 ---
 

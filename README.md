@@ -8,6 +8,7 @@ OpenAI-compatible vector store API for document storage, chunking, embedding, an
 - **File Upload & Processing**: Upload documents (text or multipart), automatic chunking and embedding
 - **Background Processing**: Large files processed asynchronously with status tracking
 - **Semantic Search**: Fast vector similarity search using pgvector HNSW indexes
+- **Structured CSV Queries**: CSV files are also stored as JSONB for precise filtering, sorting, and aggregations via Text-to-SQL
 - **OpenAI-Compatible API**: Drop-in replacement for OpenAI's vector store endpoints
 - **API Key Authentication**: All `/v1/*` routes protected via `X-API-Key` header; `/health` exempt
 - **Error Handling & Middleware**: Consistent error responses, request logging, and correlation IDs
@@ -20,6 +21,7 @@ OpenAI-compatible vector store API for document storage, chunking, embedding, an
 - **[API Reference](docs/API.md)** - Complete API endpoint documentation
 - **[Development Guide](docs/DEVELOPMENT.md)** - Development workflow, testing, and debugging
 - **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment instructions
+- **[Structured CSV](docs/STRUCTURED-CSV.md)** - Structured CSV ingestion and Text-to-SQL queries
 - **[Contributing Guide](CONTRIBUTING.md)** - Guidelines for contributing to the project
 - **[Changelog](CHANGELOG.md)** - Version history and release notes
 
@@ -30,6 +32,8 @@ OpenAI-compatible vector store API for document storage, chunking, embedding, an
 - **ORM**: SQLAlchemy 2.0 (async)
 - **Embeddings**: OpenAI API (text-embedding-3-small)
 - **Chunking**: Recursive text splitter with tiktoken
+- **CSV Parsing**: DuckDB (type inference via `read_csv_auto`)
+- **SQL Validation**: sqlparse (statement type enforcement)
 
 ## License
 
