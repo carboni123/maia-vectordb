@@ -13,6 +13,12 @@ _BINARY_EXTENSIONS = frozenset({".pdf", ".docx"})
 _SUPPORTED_EXTENSIONS = _TEXT_EXTENSIONS | _BINARY_EXTENSIONS
 
 
+def is_csv(filename: str) -> bool:
+    """Return True if the file is a CSV based on extension."""
+    ext = detect_file_type(filename)
+    return ext == ".csv"
+
+
 def detect_file_type(filename: str) -> str:
     """Return the lowercased extension for *filename*.
 
