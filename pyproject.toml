@@ -21,6 +21,8 @@ dependencies = [
     "prometheus-fastapi-instrumentator>=7.0.0",
     "pymupdf>=1.25.0",
     "python-docx>=1.1.0",
+    "duckdb>=1.2.0",
+    "sqlparse>=0.5.0",
 ]
 
 [dependency-groups]
@@ -61,6 +63,8 @@ module = [
     "asyncpg.*",
     "fitz.*",
     "docx.*",
+    "duckdb.*",
+    "sqlparse.*",
 ]
 ignore_missing_imports = true
 
