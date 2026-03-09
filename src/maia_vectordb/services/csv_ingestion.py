@@ -293,7 +293,6 @@ async def delete_csv_rows_for_file(
         text(f'DELETE FROM "{schema_name}".csv_rows WHERE file_id = :file_id'),
         {"file_id": str(file_id)},
     )
-    await session.commit()
     deleted = result.rowcount  # type: ignore[union-attr]
     logger.info(
         "Deleted %d CSV rows from %s for file %s", deleted, schema_name, file_id
@@ -316,5 +315,4 @@ async def drop_csv_schema(
     """
     schema = _schema_name(vector_store_id)
     await session.execute(text(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE'))
-    await session.commit()
     logger.info("Dropped CSV schema %s for vector store %s", schema, vector_store_id)

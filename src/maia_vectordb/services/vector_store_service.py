@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import timedelta
 from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 from maia_vectordb.core.exceptions import NotFoundError
 from maia_vectordb.models.file import File, FileStatus
@@ -147,6 +150,15 @@ async def delete_vector_store(
     if store is None:
         raise NotFoundError("Vector store not found")
     store_id_str = str(store.id)
+
+    # Clean up structured CSV schema if it exists
+    try:
+        from maia_vectordb.services.csv_ingestion import drop_csv_schema
+
+        await drop_csv_schema(session, store_id)
+    except Exception:
+        logger.exception("Failed to drop CSV schema for store %s", store_id)
+
     await session.delete(store)
     await session.commit()
     return store_id_str

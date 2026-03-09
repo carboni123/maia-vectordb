@@ -316,6 +316,17 @@ async def delete_file(
     if file_obj is None or file_obj.vector_store_id != vector_store_id:
         raise NotFoundError("File not found")
 
+    # Clean up structured CSV rows if they exist
+    attrs = file_obj.attributes or {}
+    if attrs.get("structured"):
+        try:
+            from maia_vectordb.services.csv_ingestion import delete_csv_rows_for_file
+
+            schema_name = f"vs_{str(vector_store_id).replace('-', '_')}"
+            await delete_csv_rows_for_file(session, schema_name, file_id)
+        except Exception:
+            logger.exception("Failed to clean up CSV rows for file %s", file_id)
+
     await session.delete(file_obj)  # CASCADE deletes chunks
     await session.commit()
 
