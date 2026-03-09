@@ -20,6 +20,7 @@ from sqlalchemy import text
 import maia_vectordb.models  # noqa: F401  — register all ORM models with Base.metadata
 from maia_vectordb.api.files import router as files_router
 from maia_vectordb.api.search import router as search_router
+from maia_vectordb.api.structured import router as structured_router
 from maia_vectordb.api.vector_stores import router as vector_stores_router
 from maia_vectordb.core.auth import verify_api_key
 from maia_vectordb.core.config import settings
@@ -55,6 +56,10 @@ TAG_METADATA = [
     {
         "name": "search",
         "description": "Similarity search over vector store embeddings.",
+    },
+    {
+        "name": "structured",
+        "description": "Query and preview structured CSV data.",
     },
 ]
 
@@ -178,6 +183,7 @@ _auth = [Depends(verify_api_key)]
 app.include_router(vector_stores_router, dependencies=_auth)
 app.include_router(files_router, dependencies=_auth)
 app.include_router(search_router, dependencies=_auth)
+app.include_router(structured_router, dependencies=_auth)
 
 # Expose Prometheus metrics endpoint (no auth — intended for internal scraping).
 _instrumentator.expose(app, endpoint="/metrics", include_in_schema=False)
