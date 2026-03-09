@@ -16,9 +16,11 @@ from maia_vectordb.models.file_chunk import FileChunk
 from maia_vectordb.services.chunking import get_encoding, split_text
 from maia_vectordb.services.csv_ingestion import (
     build_structured_metadata,
+    delete_csv_rows_for_file,
     ensure_csv_schema,
     insert_csv_rows,
     parse_csv_with_duckdb,
+    schema_name_for_store,
 )
 from maia_vectordb.services.embedding import embed_texts
 from maia_vectordb.services.extraction import (
@@ -320,9 +322,7 @@ async def delete_file(
     attrs = file_obj.attributes or {}
     if attrs.get("structured"):
         try:
-            from maia_vectordb.services.csv_ingestion import delete_csv_rows_for_file
-
-            schema_name = f"vs_{str(vector_store_id).replace('-', '_')}"
+            schema_name = schema_name_for_store(vector_store_id)
             await delete_csv_rows_for_file(session, schema_name, file_id)
         except Exception:
             logger.exception("Failed to clean up CSV rows for file %s", file_id)

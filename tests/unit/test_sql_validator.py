@@ -95,3 +95,33 @@ class TestValidateAndPrepareSql:
         result = validate_and_prepare_sql(sql, "vs_test_schema")
         # Both csv_rows references should be qualified
         assert result.count('"vs_test_schema".csv_rows') == 2
+
+    def test_rejects_subquery_with_other_table(self):
+        """Subquery referencing a non-csv_rows table must be rejected."""
+        sql = (
+            "SELECT * FROM csv_rows WHERE (data->>'x') IN "
+            "(SELECT tablename FROM pg_tables)"
+        )
+        with pytest.raises(SQLValidationError):
+            validate_and_prepare_sql(sql, "vs_test_schema")
+
+    def test_rejects_comma_join_with_other_table(self):
+        """Comma-separated implicit join with a non-csv_rows table must be rejected."""
+        with pytest.raises(SQLValidationError):
+            validate_and_prepare_sql(
+                "SELECT * FROM csv_rows, pg_tables", "vs_test_schema"
+            )
+
+    def test_rejects_comma_join_with_schema_qualified_table(self):
+        """Schema-qualified comma join must be rejected."""
+        with pytest.raises(SQLValidationError):
+            validate_and_prepare_sql(
+                "SELECT * FROM csv_rows, information_schema.tables",
+                "vs_test_schema",
+            )
+
+    def test_allows_csv_rows_self_join(self):
+        """csv_rows comma-joined with itself is valid."""
+        sql = "SELECT * FROM csv_rows a, csv_rows b WHERE a.file_id = b.file_id"
+        result = validate_and_prepare_sql(sql, "vs_test_schema")
+        assert result.count('"vs_test_schema".csv_rows') == 2

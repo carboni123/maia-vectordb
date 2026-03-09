@@ -7,7 +7,6 @@ from maia_vectordb.services.csv_ingestion import (
     parse_csv_with_duckdb,
 )
 
-
 # ---------------------------------------------------------------------------
 # parse_csv_with_duckdb
 # ---------------------------------------------------------------------------

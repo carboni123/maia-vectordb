@@ -22,6 +22,7 @@ from maia_vectordb.schemas.structured import (
     QueryResponse,
 )
 from maia_vectordb.services import vector_store_service
+from maia_vectordb.services.csv_ingestion import schema_name_for_store
 from maia_vectordb.services.sql_validator import (
     SQLValidationError,
     validate_and_prepare_sql,
@@ -72,7 +73,7 @@ async def query_structured(
     await vector_store_service.get_vector_store(session, vector_store_id)
 
     # 2. Build schema name from vector store ID.
-    schema_name = f"vs_{str(vector_store_id).replace('-', '_')}"
+    schema_name = schema_name_for_store(vector_store_id)
 
     # 3. Validate and prepare SQL.
     try:
@@ -81,8 +82,11 @@ async def query_structured(
         raise ValidationError(str(exc)) from exc
 
     # 4. Execute with a statement timeout to prevent long-running queries.
-    await session.execute(text("SET LOCAL statement_timeout = '10000'"))
-    result = await session.execute(text(prepared_sql))
+    try:
+        await session.execute(text("SET LOCAL statement_timeout = '10000'"))
+        result = await session.execute(text(prepared_sql))
+    except Exception as exc:
+        raise ValidationError(f"SQL execution error: {exc}") from exc
 
     # 5. Extract column names and rows.
     columns = list(result.keys())
@@ -143,7 +147,7 @@ async def preview_file(
     structured = attrs["structured"]
 
     # 4. Build schema name and query rows.
-    schema_name = f"vs_{str(vector_store_id).replace('-', '_')}"
+    schema_name = schema_name_for_store(vector_store_id)
 
     row_query = text(
         f'SELECT data FROM "{schema_name}".csv_rows '

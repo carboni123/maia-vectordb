@@ -28,7 +28,7 @@ class PreviewColumn(BaseModel):
     normalized: str
     original_header: str
     inferred_type: str
-    sample_values: list[str] | None = None
+    sample_values: list[Any] | None = None
 
 
 class PreviewResponse(BaseModel):

@@ -168,7 +168,7 @@ def build_structured_metadata(
 # ---------------------------------------------------------------------------
 
 
-def _schema_name(vector_store_id: uuid.UUID) -> str:
+def schema_name_for_store(vector_store_id: uuid.UUID) -> str:
     """Derive the Postgres schema name for a vector store's CSV data."""
     return f"vs_{str(vector_store_id).replace('-', '_')}"
 
@@ -191,7 +191,7 @@ async def ensure_csv_schema(
     str
         The schema name (e.g. ``vs_abcd1234_...``).
     """
-    schema = _schema_name(vector_store_id)
+    schema = schema_name_for_store(vector_store_id)
 
     await session.execute(
         text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"')
@@ -218,7 +218,6 @@ async def ensure_csv_schema(
             f'ON "{schema}".csv_rows USING GIN (data)'
         )
     )
-    await session.commit()
 
     logger.info("Ensured CSV schema %s for vector store %s", schema, vector_store_id)
     return schema
@@ -264,7 +263,6 @@ async def insert_csv_rows(
         )
         total_inserted += len(batch)
 
-    await session.commit()
     logger.info(
         "Inserted %d CSV rows into %s for file %s",
         total_inserted,
@@ -319,6 +317,6 @@ async def drop_csv_schema(
     vector_store_id:
         UUID of the vector store being removed.
     """
-    schema = _schema_name(vector_store_id)
+    schema = schema_name_for_store(vector_store_id)
     await session.execute(text(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE'))
     logger.info("Dropped CSV schema %s for vector store %s", schema, vector_store_id)

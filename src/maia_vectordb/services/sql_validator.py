@@ -37,6 +37,18 @@ _TABLE_REF_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Extracts the full FROM clause content (up to the next keyword or closing paren).
+# Used to find comma-separated table references within FROM clauses.
+_FROM_CLAUSE_RE = re.compile(
+    r"\bFROM\s+(.*?)(?:\s+(?:WHERE|ORDER|GROUP|HAVING|LIMIT|UNION|EXCEPT|INTERSECT)\b|\)|\s*$)",
+    re.IGNORECASE | re.DOTALL,
+)
+
+# Matches individual table-like identifiers (schema.table or table) — no function calls.
+_IDENT_RE = re.compile(
+    r"(?:\"?(\w+)\"?\.)?\"?(\w+)\"?(?!\s*\()",
+)
+
 # Matches the csv_rows identifier as a whole word.
 _CSV_ROWS_RE = re.compile(r"\bcsv_rows\b", re.IGNORECASE)
 
@@ -123,6 +135,29 @@ def validate_and_prepare_sql(sql: str, schema_name: str) -> str:
             raise SQLValidationError(
                 f"Only the csv_rows table may be queried, found: {table_part}"
             )
+
+    # Also check for comma-separated tables in FROM clauses
+    # (e.g. FROM csv_rows, pg_tables) which the FROM/JOIN regex misses.
+    for from_match in _FROM_CLAUSE_RE.finditer(sql):
+        from_content = from_match.group(1)
+        parts = [p.strip() for p in from_content.split(",")]
+        for part in parts:
+            ident_match = _IDENT_RE.match(part)
+            if ident_match:
+                schema_part = ident_match.group(1) or ""
+                table_part = ident_match.group(2)
+                table_name = table_part.lower()
+
+                if schema_part and table_name != "csv_rows":
+                    raise SQLValidationError(
+                        f"Cross-schema reference not allowed: "
+                        f"{schema_part}.{table_part}"
+                    )
+                if table_name != "csv_rows":
+                    raise SQLValidationError(
+                        f"Only the csv_rows table may be queried, "
+                        f"found: {table_part}"
+                    )
 
     # csv_rows must actually be referenced.
     if not _CSV_ROWS_RE.search(sql):

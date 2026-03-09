@@ -9,7 +9,6 @@ from fastapi.testclient import TestClient
 
 from tests.conftest import make_file, make_store
 
-
 # ---------------------------------------------------------------------------
 # POST /v1/vector_stores/{id}/query
 # ---------------------------------------------------------------------------
