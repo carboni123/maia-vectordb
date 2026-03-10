@@ -109,6 +109,31 @@ async def create_file(
     return file_record
 
 
+async def _try_ingest_csv(
+    session: AsyncSession,
+    file_obj: File,
+    content: str,
+    vector_store_id: uuid.UUID,
+) -> None:
+    """Attempt structured CSV ingestion (non-fatal on failure)."""
+    try:
+        if not is_csv(file_obj.filename):
+            return
+        columns, rows = parse_csv_with_duckdb(content)
+        if not rows:
+            return
+        schema_name = await ensure_csv_schema(session, vector_store_id)
+        await insert_csv_rows(session, schema_name, file_obj.id, rows)
+        structured_meta = build_structured_metadata(columns, len(rows))
+        existing_attrs = file_obj.attributes or {}
+        file_obj.attributes = {**existing_attrs, **structured_meta}
+    except Exception:
+        logger.exception(
+            "Structured CSV ingestion failed for file %s (non-fatal)",
+            file_obj.id,
+        )
+
+
 async def process_file_inline(
     session: AsyncSession,
     file_record: File,
@@ -122,21 +147,7 @@ async def process_file_inline(
     chunk_objs = await process_chunks(content, file_record.id, vector_store_id)
     session.add_all(chunk_objs)
 
-    # Structured CSV ingestion (parallel path)
-    try:
-        if is_csv(file_record.filename):
-            columns, rows = parse_csv_with_duckdb(content)
-            if rows:
-                schema_name = await ensure_csv_schema(session, vector_store_id)
-                await insert_csv_rows(session, schema_name, file_record.id, rows)
-                structured_meta = build_structured_metadata(columns, len(rows))
-                existing_attrs = file_record.attributes or {}
-                file_record.attributes = {**existing_attrs, **structured_meta}
-    except Exception:
-        logger.exception(
-            "Structured CSV ingestion failed for file %s (non-fatal)",
-            file_record.id,
-        )
+    await _try_ingest_csv(session, file_record, content, vector_store_id)
 
     file_record.status = FileStatus.completed
     await session.commit()
@@ -184,29 +195,7 @@ async def process_file_background(
 
             file_obj = await session.get(File, file_id)
             if file_obj is not None:
-                # Structured CSV ingestion (parallel path)
-                try:
-                    if is_csv(file_obj.filename):
-                        columns, rows = parse_csv_with_duckdb(text)
-                        if rows:
-                            schema_name = await ensure_csv_schema(
-                                session, vector_store_id
-                            )
-                            await insert_csv_rows(session, schema_name, file_id, rows)
-                            structured_meta = build_structured_metadata(
-                                columns, len(rows)
-                            )
-                            existing_attrs = file_obj.attributes or {}
-                            file_obj.attributes = {
-                                **existing_attrs,
-                                **structured_meta,
-                            }
-                except Exception:
-                    logger.exception(
-                        "Structured CSV ingestion failed for file %s (non-fatal)",
-                        file_id,
-                    )
-
+                await _try_ingest_csv(session, file_obj, text, vector_store_id)
                 file_obj.status = FileStatus.completed
             await session.commit()
             logger.info(
