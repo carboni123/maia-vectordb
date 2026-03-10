@@ -84,7 +84,7 @@ def parse_csv_with_duckdb(
         rel = conn.sql(f"SELECT * FROM read_csv_auto('{posix_path}')")
 
         raw_headers: list[str] = rel.columns
-        raw_types: list[str] = rel.types
+        raw_types = rel.types  # list[DuckDBPyType]; converted via str() below
         normalized_names = normalize_columns(raw_headers)
 
         # Fetch all rows as tuples.
@@ -295,7 +295,7 @@ async def delete_csv_rows_for_file(
         text(f'DELETE FROM "{schema_name}".csv_rows WHERE file_id = :file_id'),
         {"file_id": str(file_id)},
     )
-    deleted = result.rowcount  # type: ignore[union-attr]
+    deleted: int = result.rowcount  # type: ignore[attr-defined]
     logger.info(
         "Deleted %d CSV rows from %s for file %s", deleted, schema_name, file_id
     )
