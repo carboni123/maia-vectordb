@@ -257,7 +257,7 @@ async def insert_csv_rows(
         await session.execute(
             text(
                 f'INSERT INTO "{schema_name}".csv_rows (file_id, data) '
-                f"VALUES (:file_id, :data::jsonb)"
+                f"VALUES (:file_id, CAST(:data AS jsonb))"
             ),
             values_list,
         )
