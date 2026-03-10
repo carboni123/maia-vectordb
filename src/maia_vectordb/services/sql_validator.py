@@ -99,9 +99,10 @@ def validate_and_prepare_sql(sql: str, schema_name: str) -> str:
         raise SQLValidationError("Only a single SQL statement is allowed.")
 
     stmt = statements[0]
-    if stmt.get_type() != "SELECT":
+    stmt_type: str | None = stmt.get_type()  # type: ignore[no-untyped-call]
+    if stmt_type != "SELECT":
         raise SQLValidationError(
-            f"Only SELECT statements are allowed, got: {stmt.get_type()}"
+            f"Only SELECT statements are allowed, got: {stmt_type}"
         )
 
     # ------------------------------------------------------------------
