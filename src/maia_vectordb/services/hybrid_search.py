@@ -123,14 +123,8 @@ async def hybrid_search(
     num_candidates = min(max_results * _CANDIDATE_MULTIPLIER, 100)
 
     # Build filter clauses per alias (avoids fragile string replacement)
-    vec_clauses, vec_params = _build_filter_params(
-        metadata_filter,
-        alias="fc",
-    )
-    txt_clauses, txt_params = _build_filter_params(
-        metadata_filter,
-        alias="fc_inner",
-    )
+    vec_clauses, vec_params = build_metadata_clauses(metadata_filter, alias="fc")
+    txt_clauses, txt_params = build_metadata_clauses(metadata_filter, alias="fc_inner")
 
     # 1. Retrieve candidates from both retrieval strategies
     vector_candidates = await _vector_candidates(
@@ -241,15 +235,6 @@ async def hybrid_search(
 # ---------------------------------------------------------------------------
 # Candidate retrieval
 # ---------------------------------------------------------------------------
-
-
-def _build_filter_params(
-    metadata_filter: dict[str, Any] | None,
-    *,
-    alias: str = "fc",
-) -> tuple[list[str], dict[str, Any]]:
-    """Build SQL WHERE clauses and params for metadata filters."""
-    return build_metadata_clauses(metadata_filter, alias=alias)
 
 
 async def _vector_candidates(
