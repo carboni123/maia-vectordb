@@ -30,7 +30,6 @@ INSERT_BATCH_SIZE = 5000
 # ---------------------------------------------------------------------------
 
 
-_to_json_safe = to_json_safe  # backward-compat alias for internal callers
 
 
 def parse_csv_with_duckdb(
@@ -94,7 +93,7 @@ def parse_csv_with_duckdb(
             for row in raw_rows:
                 val = row[idx]
                 if val is not None and val not in seen_set:
-                    seen_samples.append(_to_json_safe(val))
+                    seen_samples.append(to_json_safe(val))
                     seen_set.add(val)
                     if len(seen_samples) >= 3:
                         break
@@ -109,7 +108,7 @@ def parse_csv_with_duckdb(
         for raw_row in raw_rows:
             row_dict: dict[str, Any] = {}
             for col_idx, col_name in enumerate(normalized_names):
-                row_dict[col_name] = _to_json_safe(raw_row[col_idx])
+                row_dict[col_name] = to_json_safe(raw_row[col_idx])
             rows.append(row_dict)
 
         return columns_metadata, rows
