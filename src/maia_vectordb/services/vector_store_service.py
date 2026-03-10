@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -44,8 +44,6 @@ async def create_vector_store(
     """
     store = VectorStore(name=name, metadata_=metadata)
     if expires_after is not None:
-        from datetime import datetime, timezone
-
         store.expires_at = datetime.now(timezone.utc) + timedelta(
             days=expires_after.days,
         )
