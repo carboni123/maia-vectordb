@@ -192,9 +192,7 @@ async def process_file_background(
                             schema_name = await ensure_csv_schema(
                                 session, vector_store_id
                             )
-                            await insert_csv_rows(
-                                session, schema_name, file_id, rows
-                            )
+                            await insert_csv_rows(session, schema_name, file_id, rows)
                             structured_meta = build_structured_metadata(
                                 columns, len(rows)
                             )

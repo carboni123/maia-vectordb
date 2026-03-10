@@ -29,9 +29,7 @@ class TestValidateAndPrepareSql:
 
     def test_rejects_delete(self):
         with pytest.raises(SQLValidationError):
-            validate_and_prepare_sql(
-                "DELETE FROM csv_rows WHERE 1=1", "vs_test_schema"
-            )
+            validate_and_prepare_sql("DELETE FROM csv_rows WHERE 1=1", "vs_test_schema")
 
     def test_rejects_update(self):
         with pytest.raises(SQLValidationError):
@@ -41,9 +39,7 @@ class TestValidateAndPrepareSql:
 
     def test_rejects_multiple_statements(self):
         with pytest.raises(SQLValidationError, match="single"):
-            validate_and_prepare_sql(
-                "SELECT 1; DROP TABLE csv_rows;", "vs_test_schema"
-            )
+            validate_and_prepare_sql("SELECT 1; DROP TABLE csv_rows;", "vs_test_schema")
 
     def test_auto_injects_limit(self):
         result = validate_and_prepare_sql("SELECT * FROM csv_rows", "vs_test_schema")
@@ -68,9 +64,7 @@ class TestValidateAndPrepareSql:
 
     def test_rejects_cross_schema_reference(self):
         with pytest.raises(SQLValidationError):
-            validate_and_prepare_sql(
-                "SELECT * FROM public.users", "vs_test_schema"
-            )
+            validate_and_prepare_sql("SELECT * FROM public.users", "vs_test_schema")
 
     def test_rejects_empty_sql(self):
         with pytest.raises(SQLValidationError):

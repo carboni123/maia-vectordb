@@ -193,9 +193,7 @@ async def ensure_csv_schema(
     """
     schema = schema_name_for_store(vector_store_id)
 
-    await session.execute(
-        text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"')
-    )
+    await session.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
     await session.execute(
         text(
             f'CREATE TABLE IF NOT EXISTS "{schema}".csv_rows ('

@@ -67,9 +67,7 @@ class TestStructuredCsvFlow:
             # 2. Upload CSV
             resp = await integration_client.post(
                 f"/v1/vector_stores/{vs_id}/files",
-                files={
-                    "file": ("employees.csv", io.BytesIO(CSV_CONTENT), "text/csv")
-                },
+                files={"file": ("employees.csv", io.BytesIO(CSV_CONTENT), "text/csv")},
             )
             assert resp.status_code == 201
             file_id = resp.json()["id"]
@@ -111,9 +109,7 @@ class TestStructuredCsvFlow:
         finally:
             await integration_client.delete(f"/v1/vector_stores/{vs_id}")
 
-    async def test_query_structured_data(
-        self, integration_client: AsyncClient
-    ) -> None:
+    async def test_query_structured_data(self, integration_client: AsyncClient) -> None:
         """Query structured CSV data with SQL and verify results."""
         # Setup
         resp = await integration_client.post(
@@ -125,9 +121,7 @@ class TestStructuredCsvFlow:
         try:
             resp = await integration_client.post(
                 f"/v1/vector_stores/{vs_id}/files",
-                files={
-                    "file": ("data.csv", io.BytesIO(CSV_CONTENT), "text/csv")
-                },
+                files={"file": ("data.csv", io.BytesIO(CSV_CONTENT), "text/csv")},
             )
             assert resp.status_code == 201
             file_id = resp.json()["id"]
@@ -163,9 +157,7 @@ class TestStructuredCsvFlow:
         finally:
             await integration_client.delete(f"/v1/vector_stores/{vs_id}")
 
-    async def test_query_all_rows(
-        self, integration_client: AsyncClient
-    ) -> None:
+    async def test_query_all_rows(self, integration_client: AsyncClient) -> None:
         """Query all rows without filters to verify full ingestion."""
         resp = await integration_client.post(
             "/v1/vector_stores", json={"name": "test-structured-csv-all-rows"}
@@ -175,9 +167,7 @@ class TestStructuredCsvFlow:
         try:
             resp = await integration_client.post(
                 f"/v1/vector_stores/{vs_id}/files",
-                files={
-                    "file": ("data.csv", io.BytesIO(CSV_CONTENT), "text/csv")
-                },
+                files={"file": ("data.csv", io.BytesIO(CSV_CONTENT), "text/csv")},
             )
             file_id = resp.json()["id"]
             await _wait_for_file(integration_client, vs_id, file_id)
@@ -205,9 +195,7 @@ class TestStructuredCsvFlow:
         try:
             resp = await integration_client.post(
                 f"/v1/vector_stores/{vs_id}/files",
-                files={
-                    "file": ("data.csv", io.BytesIO(CSV_CONTENT), "text/csv")
-                },
+                files={"file": ("data.csv", io.BytesIO(CSV_CONTENT), "text/csv")},
             )
             file_id = resp.json()["id"]
             await _wait_for_file(integration_client, vs_id, file_id)
@@ -237,9 +225,7 @@ class TestStructuredCsvFlow:
         finally:
             await integration_client.delete(f"/v1/vector_stores/{vs_id}")
 
-    async def test_preview_default_limit(
-        self, integration_client: AsyncClient
-    ) -> None:
+    async def test_preview_default_limit(self, integration_client: AsyncClient) -> None:
         """Preview without explicit limit returns all rows (within default)."""
         resp = await integration_client.post(
             "/v1/vector_stores", json={"name": "test-structured-csv-preview-default"}
@@ -249,9 +235,7 @@ class TestStructuredCsvFlow:
         try:
             resp = await integration_client.post(
                 f"/v1/vector_stores/{vs_id}/files",
-                files={
-                    "file": ("data.csv", io.BytesIO(CSV_CONTENT), "text/csv")
-                },
+                files={"file": ("data.csv", io.BytesIO(CSV_CONTENT), "text/csv")},
             )
             file_id = resp.json()["id"]
             await _wait_for_file(integration_client, vs_id, file_id)
@@ -313,9 +297,7 @@ class TestStructuredCsvFlow:
         try:
             resp = await integration_client.post(
                 f"/v1/vector_stores/{vs_id}/files",
-                files={
-                    "file": ("data.csv", io.BytesIO(CSV_CONTENT), "text/csv")
-                },
+                files={"file": ("data.csv", io.BytesIO(CSV_CONTENT), "text/csv")},
             )
             file_id = resp.json()["id"]
             await _wait_for_file(integration_client, vs_id, file_id)

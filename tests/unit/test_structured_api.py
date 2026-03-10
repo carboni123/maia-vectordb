@@ -61,9 +61,7 @@ class TestQueryEndpoint:
         )
         assert resp.status_code == 404
 
-    def test_query_success(
-        self, client: TestClient, mock_session: MagicMock
-    ) -> None:
+    def test_query_success(self, client: TestClient, mock_session: MagicMock) -> None:
         """Valid SELECT query returns columns and rows."""
         store = make_store()
         mock_session.get = AsyncMock(return_value=store)
@@ -87,7 +85,9 @@ class TestQueryEndpoint:
 
         resp = client.post(
             f"/v1/vector_stores/{store.id}/query",
-            json={"sql": "SELECT data->>'name' AS name, data->>'age' AS age FROM csv_rows"},
+            json={
+                "sql": "SELECT data->>'name' AS name, data->>'age' AS age FROM csv_rows"
+            },
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -139,9 +139,7 @@ class TestPreviewEndpoint:
         # First get → store (for get_vector_store), second get → None (file)
         mock_session.get = AsyncMock(side_effect=[store, None])
 
-        resp = client.get(
-            f"/v1/vector_stores/{store.id}/files/{uuid.uuid4()}/preview"
-        )
+        resp = client.get(f"/v1/vector_stores/{store.id}/files/{uuid.uuid4()}/preview")
         assert resp.status_code == 404
         body = resp.json()
         assert "File not found" in body["error"]["message"]
@@ -161,9 +159,7 @@ class TestPreviewEndpoint:
         # First get → store, second get → file
         mock_session.get = AsyncMock(side_effect=[store, file_obj])
 
-        resp = client.get(
-            f"/v1/vector_stores/{store_id}/files/{file_obj.id}/preview"
-        )
+        resp = client.get(f"/v1/vector_stores/{store_id}/files/{file_obj.id}/preview")
         assert resp.status_code == 400
         body = resp.json()
         assert "structured" in body["error"]["message"].lower()
@@ -182,9 +178,7 @@ class TestPreviewEndpoint:
 
         mock_session.get = AsyncMock(side_effect=[store, file_obj])
 
-        resp = client.get(
-            f"/v1/vector_stores/{store_id}/files/{file_obj.id}/preview"
-        )
+        resp = client.get(f"/v1/vector_stores/{store_id}/files/{file_obj.id}/preview")
         assert resp.status_code == 400
 
     def test_preview_returns_404_for_wrong_store(
@@ -197,9 +191,7 @@ class TestPreviewEndpoint:
 
         mock_session.get = AsyncMock(side_effect=[store, file_obj])
 
-        resp = client.get(
-            f"/v1/vector_stores/{store.id}/files/{file_obj.id}/preview"
-        )
+        resp = client.get(f"/v1/vector_stores/{store.id}/files/{file_obj.id}/preview")
         assert resp.status_code == 404
 
     def test_preview_returns_404_for_missing_store(
@@ -213,9 +205,7 @@ class TestPreviewEndpoint:
         )
         assert resp.status_code == 404
 
-    def test_preview_success(
-        self, client: TestClient, mock_session: MagicMock
-    ) -> None:
+    def test_preview_success(self, client: TestClient, mock_session: MagicMock) -> None:
         """Successful preview returns columns and rows."""
         store_id = uuid.uuid4()
         store = make_store(store_id=store_id)
@@ -257,13 +247,9 @@ class TestPreviewEndpoint:
         count_result = MagicMock()
         count_result.scalar_one.return_value = 2
 
-        mock_session.execute = AsyncMock(
-            side_effect=[row_result, count_result]
-        )
+        mock_session.execute = AsyncMock(side_effect=[row_result, count_result])
 
-        resp = client.get(
-            f"/v1/vector_stores/{store_id}/files/{file_id}/preview"
-        )
+        resp = client.get(f"/v1/vector_stores/{store_id}/files/{file_id}/preview")
         assert resp.status_code == 200
         body = resp.json()
 
@@ -308,9 +294,7 @@ class TestPreviewEndpoint:
         count_result = MagicMock()
         count_result.scalar_one.return_value = 100
 
-        mock_session.execute = AsyncMock(
-            side_effect=[row_result, count_result]
-        )
+        mock_session.execute = AsyncMock(side_effect=[row_result, count_result])
 
         resp = client.get(
             f"/v1/vector_stores/{store_id}/files/{file_id}/preview?limit=10"

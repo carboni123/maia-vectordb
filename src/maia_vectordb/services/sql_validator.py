@@ -96,9 +96,7 @@ def validate_and_prepare_sql(sql: str, schema_name: str) -> str:
     statements = [s for s in statements if s.value.strip()]
 
     if len(statements) != 1:
-        raise SQLValidationError(
-            "Only a single SQL statement is allowed."
-        )
+        raise SQLValidationError("Only a single SQL statement is allowed.")
 
     stmt = statements[0]
     if stmt.get_type() != "SELECT":
@@ -112,9 +110,7 @@ def validate_and_prepare_sql(sql: str, schema_name: str) -> str:
     sql_upper = sql.upper()
     for kw in _DANGEROUS_KEYWORDS:
         if re.search(rf"\b{kw}\b", sql_upper):
-            raise SQLValidationError(
-                f"Forbidden keyword detected: {kw}"
-            )
+            raise SQLValidationError(f"Forbidden keyword detected: {kw}")
 
     # ------------------------------------------------------------------
     # 4. Validate table references
@@ -155,15 +151,12 @@ def validate_and_prepare_sql(sql: str, schema_name: str) -> str:
                     )
                 if table_name != "csv_rows":
                     raise SQLValidationError(
-                        f"Only the csv_rows table may be queried, "
-                        f"found: {table_part}"
+                        f"Only the csv_rows table may be queried, found: {table_part}"
                     )
 
     # csv_rows must actually be referenced.
     if not _CSV_ROWS_RE.search(sql):
-        raise SQLValidationError(
-            "Query must reference the csv_rows table."
-        )
+        raise SQLValidationError("Query must reference the csv_rows table.")
 
     # ------------------------------------------------------------------
     # 5. Preparation: schema-qualify csv_rows

@@ -9,12 +9,12 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-logger = logging.getLogger(__name__)
-
 from maia_vectordb.core.exceptions import NotFoundError
 from maia_vectordb.models.file import File, FileStatus
 from maia_vectordb.models.vector_store import VectorStore
 from maia_vectordb.schemas.vector_store import ExpiresAfter, FileCounts
+
+logger = logging.getLogger(__name__)
 
 
 async def create_vector_store(

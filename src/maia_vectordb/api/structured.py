@@ -159,8 +159,7 @@ async def preview_file(
 
     # 5. Get total row count.
     count_query = text(
-        f'SELECT COUNT(*) FROM "{schema_name}".csv_rows '
-        f"WHERE file_id = :file_id"
+        f'SELECT COUNT(*) FROM "{schema_name}".csv_rows WHERE file_id = :file_id'
     )
     count_result = await session.execute(count_query, {"file_id": str(file_id)})
     total_rows = count_result.scalar_one()
