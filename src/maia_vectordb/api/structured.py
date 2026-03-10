@@ -11,7 +11,7 @@ from fastapi import APIRouter, Query
 from sqlalchemy import text
 
 from maia_vectordb.api.deps import DBSession
-from maia_vectordb.core.exceptions import NotFoundError, ValidationError
+from maia_vectordb.core.exceptions import DatabaseError, NotFoundError, ValidationError
 from maia_vectordb.models.file import File
 from maia_vectordb.schemas.structured import (
     PreviewColumn,
@@ -67,7 +67,8 @@ async def query_structured(
         await session.execute(text("SET LOCAL statement_timeout = '10000'"))
         result = await session.execute(text(prepared_sql))
     except Exception as exc:
-        raise ValidationError(f"SQL execution error: {exc}") from exc
+        logger.exception("SQL execution failed for store %s", vector_store_id)
+        raise DatabaseError("Query execution failed") from exc
 
     # 5. Extract column names and rows.
     columns = list(result.keys())
