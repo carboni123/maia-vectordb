@@ -19,5 +19,5 @@ def verify_api_key(api_key: str | None = Security(_api_key_header)) -> str:
     success.
     """
     if not api_key or api_key not in settings.api_keys:
-        raise AuthenticationError
+        raise AuthenticationError()
     return api_key
