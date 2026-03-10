@@ -13,6 +13,7 @@ from maia_vectordb.core.exceptions import NotFoundError
 from maia_vectordb.models.file import File, FileStatus
 from maia_vectordb.models.vector_store import VectorStore
 from maia_vectordb.schemas.vector_store import ExpiresAfter, FileCounts
+from maia_vectordb.services.csv_ingestion import drop_csv_schema
 
 logger = logging.getLogger(__name__)
 
@@ -151,8 +152,6 @@ async def delete_vector_store(
 
     # Clean up structured CSV schema if it exists
     try:
-        from maia_vectordb.services.csv_ingestion import drop_csv_schema
-
         await drop_csv_schema(session, store_id)
     except Exception:
         logger.exception("Failed to drop CSV schema for store %s", store_id)
