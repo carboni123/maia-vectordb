@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class ComponentHealth(BaseModel):
     """Health status of a single component."""
 
-    status: str = Field(description="Component status: 'ok' or 'error'")
+    status: Literal["ok", "error"] = Field(
+        description="Component status: 'ok' or 'error'"
+    )
     detail: str | None = Field(
         default=None, description="Additional detail if unhealthy"
     )
@@ -26,7 +30,9 @@ class ComponentHealth(BaseModel):
 class HealthResponse(BaseModel):
     """Response body for the health check endpoint."""
 
-    status: str = Field(description="Overall service status: 'ok' or 'degraded'")
+    status: Literal["ok", "degraded"] = Field(
+        description="Overall service status: 'ok' or 'degraded'"
+    )
     version: str = Field(description="API version string")
     database: ComponentHealth = Field(description="Database connectivity status")
     openai_api_key_set: bool = Field(
