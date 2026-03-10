@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ComponentHealth(BaseModel):
@@ -13,14 +13,14 @@ class ComponentHealth(BaseModel):
         default=None, description="Additional detail if unhealthy"
     )
 
-    model_config = {
-        "json_schema_extra": {
+    model_config = ConfigDict(
+        json_schema_extra={
             "examples": [
                 {"status": "ok", "detail": None},
                 {"status": "error", "detail": "Connection refused"},
             ]
         }
-    }
+    )
 
 
 class HealthResponse(BaseModel):
@@ -33,8 +33,8 @@ class HealthResponse(BaseModel):
         description="Whether the OpenAI API key is configured"
     )
 
-    model_config = {
-        "json_schema_extra": {
+    model_config = ConfigDict(
+        json_schema_extra={
             "examples": [
                 {
                     "status": "ok",
@@ -53,4 +53,4 @@ class HealthResponse(BaseModel):
                 },
             ]
         }
-    }
+    )
