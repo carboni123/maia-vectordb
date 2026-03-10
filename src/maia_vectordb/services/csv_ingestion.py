@@ -6,8 +6,6 @@ import json
 import logging
 import tempfile
 import uuid
-from datetime import date, datetime, time
-from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +14,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from maia_vectordb.services.csv_utils import map_duckdb_type, normalize_columns
+from maia_vectordb.services.json_utils import to_json_safe
 
 logger = logging.getLogger(__name__)
 
@@ -31,19 +30,7 @@ INSERT_BATCH_SIZE = 5000
 # ---------------------------------------------------------------------------
 
 
-def _to_json_safe(value: Any) -> Any:
-    """Convert DuckDB-specific Python types to JSON-serializable equivalents."""
-    if value is None:
-        return None
-    if isinstance(value, Decimal):
-        return float(value)
-    if isinstance(value, datetime):
-        return value.isoformat()
-    if isinstance(value, date):
-        return value.isoformat()
-    if isinstance(value, time):
-        return value.isoformat()
-    return value
+_to_json_safe = to_json_safe  # backward-compat alias for internal callers
 
 
 def parse_csv_with_duckdb(

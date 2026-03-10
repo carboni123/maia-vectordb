@@ -5,8 +5,6 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from datetime import datetime
-from decimal import Decimal
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Query
@@ -23,6 +21,7 @@ from maia_vectordb.schemas.structured import (
 )
 from maia_vectordb.services import vector_store_service
 from maia_vectordb.services.csv_ingestion import schema_name_for_store
+from maia_vectordb.services.json_utils import to_json_safe
 from maia_vectordb.services.sql_validator import (
     SQLValidationError,
     validate_and_prepare_sql,
@@ -37,24 +36,6 @@ router = APIRouter(
 
 # Maximum response payload size before truncation (bytes).
 _MAX_RESPONSE_BYTES = 100_000  # 100 KB
-
-
-def _to_json_safe(value: Any) -> Any:
-    """Convert a database value to a JSON-serializable Python type."""
-    if value is None:
-        return None
-    if isinstance(value, Decimal):
-        # Preserve integers; use float for fractional decimals.
-        if value == value.to_integral_value():
-            return int(value)
-        return float(value)
-    if isinstance(value, datetime):
-        return value.isoformat()
-    if isinstance(value, uuid.UUID):
-        return str(value)
-    if isinstance(value, bytes):
-        return value.decode("utf-8", errors="replace")
-    return value
 
 
 @router.post("/query", response_model=QueryResponse)
@@ -98,7 +79,7 @@ async def query_structured(
     accumulated_size = 0
 
     for raw_row in raw_rows:
-        converted = [_to_json_safe(v) for v in raw_row]
+        converted = [to_json_safe(v) for v in raw_row]
         row_json = json.dumps(converted, default=str)
         accumulated_size += len(row_json)
 
