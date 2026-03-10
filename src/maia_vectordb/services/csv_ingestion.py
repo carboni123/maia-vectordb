@@ -80,7 +80,7 @@ def parse_csv_with_duckdb(
         # ---- Build column metadata ----
         columns_metadata: list[dict[str, Any]] = []
         for idx, (norm, original, dtype) in enumerate(
-            zip(normalized_names, raw_headers, raw_types)
+            zip(normalized_names, raw_headers, raw_types, strict=True)
         ):
             col_meta: dict[str, Any] = {
                 "normalized": norm,
