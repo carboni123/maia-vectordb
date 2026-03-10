@@ -20,11 +20,6 @@ logger = logging.getLogger(__name__)
 _engine: AsyncEngine | None = None
 _session_factory: async_sessionmaker[AsyncSession] | None = None
 
-# Tables that must exist before the app can serve requests.
-# UPDATE THIS SET when adding new ORM models via Alembic migrations.
-_REQUIRED_TABLES = {"vector_stores", "files", "file_chunks"}
-
-
 def _create_engine() -> AsyncEngine:
     """Create an async SQLAlchemy engine with connection pooling."""
     return create_async_engine(
@@ -52,12 +47,18 @@ async def init_engine() -> None:
         # Ensure pgvector extension is loaded (fast, idempotent)
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
 
+        # Derive required tables from ORM metadata (no manual set to maintain)
+        import maia_vectordb.models  # noqa: F401
+        from maia_vectordb.db.base import Base
+
+        required_tables = set(Base.metadata.tables.keys())
+
         # Verify required tables exist — don't CREATE them (that's Alembic's job)
         result = await conn.execute(
             text("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
         )
         existing = {row[0] for row in result.fetchall()}
-        missing = _REQUIRED_TABLES - existing
+        missing = required_tables - existing
 
         if missing:
             logger.warning(
@@ -65,9 +66,6 @@ async def init_engine() -> None:
                 missing,
             )
             # Fallback: create tables for fresh installs / dev environments
-            import maia_vectordb.models  # noqa: F401
-            from maia_vectordb.db.base import Base
-
             await conn.run_sync(Base.metadata.create_all)
         else:
             logger.info("Schema verified — all required tables present")
