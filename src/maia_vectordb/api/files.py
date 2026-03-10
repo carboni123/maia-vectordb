@@ -23,7 +23,6 @@ from maia_vectordb.core.exceptions import (
     FileTooLargeError,
     ValidationError,
 )
-from maia_vectordb.models.file import FileStatus
 from maia_vectordb.schemas.file import (
     DeleteFileResponse,
     FileListResponse,
@@ -128,13 +127,11 @@ async def upload_file(
             chunk_count=chunk_count,
         )
     except APIError:
-        file_record.status = FileStatus.failed
-        await session.commit()
+        await file_service.mark_file_failed(session, file_record)
         raise
     except Exception:
         logger.exception("Failed to process file %s", file_record.id)
-        file_record.status = FileStatus.failed
-        await session.commit()
+        await file_service.mark_file_failed(session, file_record)
         raise EmbeddingServiceError("File processing failed")
 
 

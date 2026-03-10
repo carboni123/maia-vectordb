@@ -134,6 +134,12 @@ async def _try_ingest_csv(
         )
 
 
+async def mark_file_failed(session: AsyncSession, file_record: File) -> None:
+    """Mark a file as failed and commit the change."""
+    file_record.status = FileStatus.failed
+    await session.commit()
+
+
 async def process_file_inline(
     session: AsyncSession,
     file_record: File,
