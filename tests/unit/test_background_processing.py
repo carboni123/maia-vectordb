@@ -49,7 +49,9 @@ class TestBackgroundProcessing:
 
         # Verify
         mock_process_chunks.assert_called_once_with(
-            test_text, file_id, store_id,
+            test_text,
+            file_id,
+            store_id,
             file_attributes=mock_file.attributes,
         )
         mock_session.add_all.assert_called_once()
@@ -193,6 +195,8 @@ class TestBackgroundProcessing:
         assert mock_file.status == FileStatus.completed
         mock_session.add_all.assert_called_once_with([])
         mock_process_chunks.assert_called_once_with(
-            test_text, file_id, store_id,
+            test_text,
+            file_id,
+            store_id,
             file_attributes=mock_file.attributes,
         )

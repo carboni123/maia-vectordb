@@ -122,9 +122,7 @@ class TestBuildMetadataClauses:
 
     def test_params_are_numbered_sequentially(self) -> None:
         """Verify bind param names are deterministic and sequential."""
-        clauses, params = build_metadata_clauses(
-            {"a": "1", "b": "2", "c": "3"}
-        )
+        clauses, params = build_metadata_clauses({"a": "1", "b": "2", "c": "3"})
         assert len(clauses) == 3
         for i in range(3):
             assert f"filter_key_{i}" in params

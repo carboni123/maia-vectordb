@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 _engine: AsyncEngine | None = None
 _session_factory: async_sessionmaker[AsyncSession] | None = None
 
+
 def _create_engine() -> AsyncEngine:
     """Create an async SQLAlchemy engine with connection pooling."""
     return create_async_engine(

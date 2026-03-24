@@ -71,7 +71,9 @@ async def execute_structured_query(
         result = await session.execute(text(prepared_sql))
     except (DataError, ProgrammingError) as exc:
         logger.warning("Invalid SQL for store %s: %s", vector_store_id, exc)
-        raise ValidationError("Query execution failed: invalid SQL or data types") from exc
+        raise ValidationError(
+            "Query execution failed: invalid SQL or data types"
+        ) from exc
     except Exception as exc:
         logger.exception("SQL execution failed for store %s", vector_store_id)
         raise DatabaseError("Query execution failed") from exc

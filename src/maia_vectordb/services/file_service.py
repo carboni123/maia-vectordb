@@ -151,7 +151,9 @@ async def process_file_inline(
     Updates the file status to completed/failed. Returns chunk count.
     """
     chunk_objs = await process_chunks(
-        content, file_record.id, vector_store_id,
+        content,
+        file_record.id,
+        vector_store_id,
         file_attributes=file_record.attributes,
     )
     session.add_all(chunk_objs)
@@ -225,7 +227,9 @@ async def process_file_background(
             file_attrs = file_obj.attributes if file_obj else None
 
             chunk_objs = await process_chunks(
-                text, file_id, vector_store_id,
+                text,
+                file_id,
+                vector_store_id,
                 file_attributes=file_attrs,
             )
             session.add_all(chunk_objs)

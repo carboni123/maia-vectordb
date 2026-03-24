@@ -105,7 +105,9 @@ class TestQueryEndpoint:
         mock_session.get = AsyncMock(return_value=store)
 
         # First execute succeeds (SET LOCAL), second raises DataError
-        orig = DataError("select", {}, Exception("invalid input syntax for type numeric: \"\""))
+        orig = DataError(
+            "select", {}, Exception('invalid input syntax for type numeric: ""')
+        )
         mock_session.execute = AsyncMock(
             side_effect=[MagicMock(), orig],
         )
@@ -125,7 +127,7 @@ class TestQueryEndpoint:
         store = make_store()
         mock_session.get = AsyncMock(return_value=store)
 
-        orig = ProgrammingError("select", {}, Exception("column \"foo\" does not exist"))
+        orig = ProgrammingError("select", {}, Exception('column "foo" does not exist'))
         mock_session.execute = AsyncMock(
             side_effect=[MagicMock(), orig],
         )

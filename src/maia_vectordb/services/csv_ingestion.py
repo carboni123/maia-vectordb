@@ -30,8 +30,6 @@ INSERT_BATCH_SIZE = 5000
 # ---------------------------------------------------------------------------
 
 
-
-
 def parse_csv_with_duckdb(
     csv_content: str,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
