@@ -48,7 +48,10 @@ class TestBackgroundProcessing:
         await process_file_background(file_id, store_id, test_text)
 
         # Verify
-        mock_process_chunks.assert_called_once_with(test_text, file_id, store_id)
+        mock_process_chunks.assert_called_once_with(
+            test_text, file_id, store_id,
+            file_attributes=mock_file.attributes,
+        )
         mock_session.add_all.assert_called_once()
         assert mock_file.status == FileStatus.completed
         assert mock_session.commit.call_count == 1
@@ -189,3 +192,7 @@ class TestBackgroundProcessing:
         # Verify file marked as completed even with no chunks
         assert mock_file.status == FileStatus.completed
         mock_session.add_all.assert_called_once_with([])
+        mock_process_chunks.assert_called_once_with(
+            test_text, file_id, store_id,
+            file_attributes=mock_file.attributes,
+        )

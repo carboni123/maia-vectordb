@@ -150,7 +150,10 @@ async def process_file_inline(
 
     Updates the file status to completed/failed. Returns chunk count.
     """
-    chunk_objs = await process_chunks(content, file_record.id, vector_store_id)
+    chunk_objs = await process_chunks(
+        content, file_record.id, vector_store_id,
+        file_attributes=file_record.attributes,
+    )
     session.add_all(chunk_objs)
 
     await _try_ingest_csv(session, file_record, content, vector_store_id)
@@ -165,13 +168,33 @@ async def process_chunks(
     text: str,
     file_id: uuid.UUID,
     vector_store_id: uuid.UUID,
+    *,
+    file_attributes: dict[str, Any] | None = None,
 ) -> list[FileChunk]:
-    """Chunk text, embed, and return FileChunk ORM objects."""
+    """Chunk text, embed, and return FileChunk ORM objects.
+
+    Parameters
+    ----------
+    file_attributes
+        Optional dict of user-supplied file attributes to copy onto every
+        chunk's ``metadata_`` column, enabling attribute-based search
+        filtering (e.g. ``{"agent_id": "..."}``).  Keys added by the
+        server (like ``"structured"``) are excluded automatically.
+    """
     chunks = split_text(text)
     if not chunks:
         return []
 
     embeddings = await embed_texts(chunks)
+
+    # Copy user-supplied attributes to chunks so search filters work.
+    # Exclude server-managed keys (e.g. "structured" from CSV ingestion).
+    _SERVER_KEYS = {"structured"}
+    chunk_meta: dict[str, Any] | None = None
+    if file_attributes:
+        chunk_meta = {k: v for k, v in file_attributes.items() if k not in _SERVER_KEYS}
+        if not chunk_meta:
+            chunk_meta = None
 
     return [
         FileChunk(
@@ -182,6 +205,7 @@ async def process_chunks(
             content=chunk_text,
             token_count=len(get_encoding().encode(chunk_text)),
             embedding=emb,
+            metadata_=chunk_meta,
         )
         for idx, (chunk_text, emb) in enumerate(zip(chunks, embeddings, strict=True))
     ]
@@ -196,10 +220,16 @@ async def process_file_background(
     factory = get_session_factory()
     async with factory() as session:
         try:
-            chunk_objs = await process_chunks(text, file_id, vector_store_id)
+            # Fetch file record first to get user-supplied attributes
+            file_obj = await session.get(File, file_id)
+            file_attrs = file_obj.attributes if file_obj else None
+
+            chunk_objs = await process_chunks(
+                text, file_id, vector_store_id,
+                file_attributes=file_attrs,
+            )
             session.add_all(chunk_objs)
 
-            file_obj = await session.get(File, file_id)
             if file_obj is not None:
                 await _try_ingest_csv(session, file_obj, text, vector_store_id)
                 file_obj.status = FileStatus.completed
