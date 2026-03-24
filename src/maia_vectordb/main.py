@@ -18,6 +18,7 @@ from slowapi.util import get_remote_address
 from sqlalchemy import text
 
 import maia_vectordb.models  # noqa: F401  — register all ORM models with Base.metadata
+from maia_vectordb.api.embeddings import router as embeddings_router
 from maia_vectordb.api.files import router as files_router
 from maia_vectordb.api.search import router as search_router
 from maia_vectordb.api.structured import router as structured_router
@@ -184,6 +185,7 @@ app.include_router(vector_stores_router, dependencies=_auth)
 app.include_router(files_router, dependencies=_auth)
 app.include_router(search_router, dependencies=_auth)
 app.include_router(structured_router, dependencies=_auth)
+app.include_router(embeddings_router, dependencies=_auth)
 
 # Expose Prometheus metrics endpoint (no auth — intended for internal scraping).
 _instrumentator.expose(app, endpoint="/metrics", include_in_schema=False)
