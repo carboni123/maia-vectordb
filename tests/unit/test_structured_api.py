@@ -6,6 +6,7 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock
 
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import DataError, ProgrammingError
 
 from tests.conftest import make_file, make_store
 
@@ -95,6 +96,66 @@ class TestQueryEndpoint:
         assert body["row_count"] == 2
         assert body["truncated"] is False
         assert body["rows"] == [["Alice", 30], ["Bob", 25]]
+
+    def test_query_returns_400_on_data_type_error(
+        self, client: TestClient, mock_session: MagicMock
+    ) -> None:
+        """PostgreSQL data-type errors (e.g. empty string to numeric) return 400."""
+        store = make_store()
+        mock_session.get = AsyncMock(return_value=store)
+
+        # First execute succeeds (SET LOCAL), second raises DataError
+        orig = DataError("select", {}, Exception("invalid input syntax for type numeric: \"\""))
+        mock_session.execute = AsyncMock(
+            side_effect=[MagicMock(), orig],
+        )
+
+        resp = client.post(
+            f"/v1/vector_stores/{store.id}/query",
+            json={"sql": "SELECT * FROM csv_rows WHERE (data->>'price')::numeric > 0"},
+        )
+        assert resp.status_code == 400
+        body = resp.json()
+        assert body["error"]["type"] == "validation_error"
+
+    def test_query_returns_400_on_programming_error(
+        self, client: TestClient, mock_session: MagicMock
+    ) -> None:
+        """PostgreSQL programming errors (e.g. undefined column) return 400."""
+        store = make_store()
+        mock_session.get = AsyncMock(return_value=store)
+
+        orig = ProgrammingError("select", {}, Exception("column \"foo\" does not exist"))
+        mock_session.execute = AsyncMock(
+            side_effect=[MagicMock(), orig],
+        )
+
+        resp = client.post(
+            f"/v1/vector_stores/{store.id}/query",
+            json={"sql": "SELECT foo FROM csv_rows"},
+        )
+        assert resp.status_code == 400
+        body = resp.json()
+        assert body["error"]["type"] == "validation_error"
+
+    def test_query_returns_503_on_infrastructure_error(
+        self, client: TestClient, mock_session: MagicMock
+    ) -> None:
+        """Non-SQL errors (e.g. connection failure) still return 503."""
+        store = make_store()
+        mock_session.get = AsyncMock(return_value=store)
+
+        mock_session.execute = AsyncMock(
+            side_effect=[MagicMock(), ConnectionError("connection refused")],
+        )
+
+        resp = client.post(
+            f"/v1/vector_stores/{store.id}/query",
+            json={"sql": "SELECT * FROM csv_rows"},
+        )
+        assert resp.status_code == 503
+        body = resp.json()
+        assert body["error"]["type"] == "database_error"
 
     def test_query_rejects_insert(
         self, client: TestClient, mock_session: MagicMock

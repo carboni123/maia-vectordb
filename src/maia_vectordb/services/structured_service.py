@@ -8,6 +8,7 @@ import uuid
 from typing import Any
 
 from sqlalchemy import text
+from sqlalchemy.exc import DataError, ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from maia_vectordb.core.exceptions import DatabaseError, NotFoundError, ValidationError
@@ -68,6 +69,9 @@ async def execute_structured_query(
     try:
         await session.execute(text("SET LOCAL statement_timeout = '10000'"))
         result = await session.execute(text(prepared_sql))
+    except (DataError, ProgrammingError) as exc:
+        logger.warning("Invalid SQL for store %s: %s", vector_store_id, exc)
+        raise ValidationError("Query execution failed: invalid SQL or data types") from exc
     except Exception as exc:
         logger.exception("SQL execution failed for store %s", vector_store_id)
         raise DatabaseError("Query execution failed") from exc
