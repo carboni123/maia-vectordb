@@ -39,7 +39,10 @@ async def search(
     """
     await vector_store_service.get_vector_store(session, vector_store_id)
 
-    query_embedding = (await embed_texts([body.query]))[0]
+    if body.query_embedding is not None:
+        query_embedding = body.query_embedding
+    else:
+        query_embedding = (await embed_texts([body.query]))[0]
 
     if body.search_mode == SearchMode.HYBRID:
         weights = body.ranking_weights

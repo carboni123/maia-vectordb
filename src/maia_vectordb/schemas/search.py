@@ -35,6 +35,11 @@ class SearchRequest(BaseModel):
     """Request body for similarity search."""
 
     query: str = Field(min_length=1)
+    query_embedding: list[float] | None = Field(
+        default=None,
+        description="Pre-computed embedding vector. When provided, the server "
+        "skips embedding generation and uses this vector directly.",
+    )
     max_results: int = Field(default=10, ge=1, le=100)
     filter: dict[str, Any] | None = None
     score_threshold: float | None = Field(default=None, ge=0.0, le=1.0)
