@@ -360,3 +360,148 @@ class TestSearch:
             json={"query": "test", "score_threshold": 1.5},
         )
         assert resp.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# Pre-computed query_embedding support
+# ---------------------------------------------------------------------------
+
+
+class TestSearchQueryEmbedding:
+    """Tests for the query_embedding field (skip embed_texts when provided)."""
+
+    @patch("maia_vectordb.api.search.embed_texts")
+    def test_query_embedding_skips_embed_texts(
+        self,
+        mock_embed: MagicMock,
+        client: TestClient,
+        mock_session: MagicMock,
+    ) -> None:
+        """When query_embedding is provided, embed_texts is NOT called."""
+        store_id = uuid.uuid4()
+        store = make_store(store_id=store_id)
+        mock_session.get = AsyncMock(return_value=store)
+
+        result_mock = MagicMock()
+        result_mock.fetchall.return_value = []
+        mock_session.execute = AsyncMock(return_value=result_mock)
+
+        pre_computed = [0.5] * _EMBEDDING_DIM
+        resp = client.post(
+            f"/v1/vector_stores/{store_id}/search",
+            json={"query": "test", "query_embedding": pre_computed},
+        )
+
+        assert resp.status_code == 200
+        mock_embed.assert_not_called()
+
+    @patch("maia_vectordb.api.search.embed_texts")
+    def test_query_embedding_is_used_in_search(
+        self,
+        mock_embed: MagicMock,
+        client: TestClient,
+        mock_session: MagicMock,
+    ) -> None:
+        """The pre-computed embedding is forwarded to the SQL query."""
+        store_id = uuid.uuid4()
+        store = make_store(store_id=store_id)
+        mock_session.get = AsyncMock(return_value=store)
+
+        result_mock = MagicMock()
+        result_mock.fetchall.return_value = []
+        mock_session.execute = AsyncMock(return_value=result_mock)
+
+        pre_computed = [0.25] * _EMBEDDING_DIM
+        resp = client.post(
+            f"/v1/vector_stores/{store_id}/search",
+            json={"query": "test", "query_embedding": pre_computed},
+        )
+
+        assert resp.status_code == 200
+        # Verify the embedding passed to execute matches what we sent
+        call_args = mock_session.execute.call_args
+        params = call_args[0][1]
+        assert params["query_embedding"] == str(pre_computed)
+
+    @patch("maia_vectordb.api.search.embed_texts")
+    def test_without_query_embedding_calls_embed_texts(
+        self,
+        mock_embed: MagicMock,
+        client: TestClient,
+        mock_session: MagicMock,
+    ) -> None:
+        """Without query_embedding, embed_texts is called as before."""
+        store_id = uuid.uuid4()
+        store = make_store(store_id=store_id)
+        mock_session.get = AsyncMock(return_value=store)
+
+        mock_embed.return_value = [[0.1] * _EMBEDDING_DIM]
+
+        result_mock = MagicMock()
+        result_mock.fetchall.return_value = []
+        mock_session.execute = AsyncMock(return_value=result_mock)
+
+        resp = client.post(
+            f"/v1/vector_stores/{store_id}/search",
+            json={"query": "my query"},
+        )
+
+        assert resp.status_code == 200
+        mock_embed.assert_called_once_with(["my query"])
+
+    @patch("maia_vectordb.api.search.embed_texts")
+    def test_query_embedding_null_calls_embed_texts(
+        self,
+        mock_embed: MagicMock,
+        client: TestClient,
+        mock_session: MagicMock,
+    ) -> None:
+        """Explicitly passing null for query_embedding falls back to embed_texts."""
+        store_id = uuid.uuid4()
+        store = make_store(store_id=store_id)
+        mock_session.get = AsyncMock(return_value=store)
+
+        mock_embed.return_value = [[0.1] * _EMBEDDING_DIM]
+
+        result_mock = MagicMock()
+        result_mock.fetchall.return_value = []
+        mock_session.execute = AsyncMock(return_value=result_mock)
+
+        resp = client.post(
+            f"/v1/vector_stores/{store_id}/search",
+            json={"query": "my query", "query_embedding": None},
+        )
+
+        assert resp.status_code == 200
+        mock_embed.assert_called_once_with(["my query"])
+
+    @patch("maia_vectordb.api.search.embed_texts")
+    def test_query_embedding_with_results(
+        self,
+        mock_embed: MagicMock,
+        client: TestClient,
+        mock_session: MagicMock,
+    ) -> None:
+        """Pre-computed embedding returns results normally."""
+        store_id = uuid.uuid4()
+        store = make_store(store_id=store_id)
+        mock_session.get = AsyncMock(return_value=store)
+
+        row = _make_search_row(content="matched", score=0.9)
+        result_mock = MagicMock()
+        result_mock.fetchall.return_value = [row]
+        mock_session.execute = AsyncMock(return_value=result_mock)
+
+        resp = client.post(
+            f"/v1/vector_stores/{store_id}/search",
+            json={
+                "query": "test",
+                "query_embedding": [0.5] * _EMBEDDING_DIM,
+            },
+        )
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert len(body["data"]) == 1
+        assert body["data"][0]["content"] == "matched"
+        mock_embed.assert_not_called()
